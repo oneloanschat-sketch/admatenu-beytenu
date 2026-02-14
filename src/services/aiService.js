@@ -1,20 +1,65 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-let genAI = null;
-let model = null;
+// Model priority list (Prioritizing Higher RPM limits)
+// Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
+const MODEL_NAMES = [
+    "gemini-2.0-flash", // Limit: 15 RPM
+    "gemini-2.5-flash"  // Limit: 5 RPM
+];
 
+let models = [];
+
+// Initialize models
 if (process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash", // Verified WORKING model
-        generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8000,
-        }
-    });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    models = MODEL_NAMES.map(name => ({
+        name: name,
+        instance: genAI.getGenerativeModel({
+            model: name,
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 8000,
+            }
+        })
+    }));
+    console.log("AI Models initialized:", MODEL_NAMES);
 } else {
     console.warn("GEMINI_API_KEY not found. AI features disabled.");
 }
+
+// Helper: safe generation with fallback
+const generateWithFallback = async (prompt) => {
+    let lastError = null;
+    for (let i = 0; i < models.length; i++) {
+        const modelObj = models[i];
+        try {
+            const result = await modelObj.instance.generateContent(prompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error) {
+            const isRateLimit = error.message.includes("429") || error.message.includes("Too Many Requests") || error.message.includes("QuotaExceeded");
+            // If it's a 404 (Not Found) or 429 (Rate Limit) or 503 (Service Unavailable), we try next.
+            // If it's a 400 (Bad Request), it's our fault, but sometimes 400 comes safely.
+
+            console.warn(`⚠️ Model ${modelObj.name} failed. Error: ${error.message.substring(0, 100)}... Switching to next...`);
+            lastError = error;
+            continue; // Try next model
+        }
+    }
+    throw lastError || new Error("All AI models failed.");
+};
+
+// Replaces the direct model usage. We export a 'model' object that mimics the SDK's interface.
+const model = {
+    generateContent: async (prompt) => {
+        const text = await generateWithFallback(prompt);
+        return {
+            response: {
+                text: () => text
+            }
+        };
+    }
+};
 
 const parseAiJson = (text) => {
     try {
