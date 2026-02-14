@@ -155,16 +155,34 @@ const processMessage = async (phoneNumber, messageBody) => {
     let session = await getSession(phoneNumber);
 
     if (!session) {
+        console.log(`Creating new session for ${phoneNumber}...`);
         session = await createSession(phoneNumber);
+
+        if (!session) {
+            console.error(`CRITICAL: Failed to create session for ${phoneNumber}. Database connectivity issue?`);
+            // Optional: fallback response if DB is down
+            await whatsappService.sendMessage(phoneNumber, "Service temporarily unavailable. Please try again later.");
+            return;
+        }
+
         // Determine language from first message if possible, or default to He
         const lang = detectLanguage(messageBody);
-        session.data.language = lang;
+        if (session.data) {
+            session.data.language = lang;
+        } else {
+            // Should not happen if session created
+            console.error('Session created but data is null');
+            return;
+        }
 
         // Send Greeting
+        console.log(`Sending greeting to ${phoneNumber} in ${lang}`);
         await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].greeting);
         await updateSession(phoneNumber, STEPS.GREETING, session.data);
         return;
     }
+
+    console.log(`Existing session for ${phoneNumber}: step=${session.step}`);
 
     const lang = session.data.language || 'he';
     const step = session.step;
