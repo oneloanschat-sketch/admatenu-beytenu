@@ -1,6 +1,7 @@
 let supabase = require('../config/supabase');
 const whatsappService = require('./whatsappService');
 const emailService = require('./emailService');
+const aiService = require('./aiService');
 const { detectLanguage } = require('../utils/language');
 
 // Dictionary for multilingual responses
@@ -185,8 +186,17 @@ const processMessage = async (phoneNumber, messageBody) => {
             break;
 
         case STEPS.QUALIFICATION:
-            // Parse amount
-            const amount = parseInt(messageBody.replace(/\D/g, '')); // Simple number extraction
+            // Use AI to extract amount
+            const aiAmountResponse = await aiService.analyzeInput(messageBody, 'QUALIFICATION', lang);
+            let amount = null;
+
+            if (aiAmountResponse && aiAmountResponse.amount) {
+                amount = aiAmountResponse.amount;
+            } else {
+                // Fallback to regex if AI fails or returns null
+                amount = parseInt(messageBody.replace(/\D/g, ''));
+            }
+
             if (!amount || amount < 200000) {
                 await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].rejection);
                 // Maybe delete session or mark as closed?
@@ -211,7 +221,18 @@ const processMessage = async (phoneNumber, messageBody) => {
             break;
 
         case STEPS.PROPERTY_OWNERSHIP:
-            session.data.has_property = messageBody.toLowerCase().includes('yes') || messageBody.toLowerCase().includes('ken') || messageBody.toLowerCase().includes('naam') || messageBody.includes('כן') ? 'yes' : 'no'; // Simple heuristic
+            const aiPropertyResponse = await aiService.analyzeInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
+            let hasProperty = false;
+
+            if (aiPropertyResponse && aiPropertyResponse.has_property !== null) {
+                hasProperty = aiPropertyResponse.has_property;
+            } else {
+                // Fallback to simple heuristic
+                hasProperty = messageBody.toLowerCase().includes('yes') || messageBody.toLowerCase().includes('ken') || messageBody.toLowerCase().includes('naam') || messageBody.includes('כן');
+            }
+
+            session.data.has_property = hasProperty ? 'yes' : 'no';
+
             // Prompt says: Under whose name is it registered? ...
             // Even if they say 'no', the prompt implies we ask details? "If >= 200k: Proceed".
             // Actually, if they don't own property, asset-backed loan might be impossible.
@@ -239,6 +260,11 @@ const processMessage = async (phoneNumber, messageBody) => {
     }
 };
 
+const injectDb = (mockDb) => {
+    supabase = mockDb;
+};
+
 module.exports = {
     processMessage,
+    injectDb
 };
