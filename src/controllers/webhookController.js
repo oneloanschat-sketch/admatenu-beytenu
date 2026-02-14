@@ -12,7 +12,7 @@ exports.handleWebhook = async (req, res) => {
         }
 
         if (data && data.from && data.body) {
-            const phoneNumber = data.from;
+            const phoneNumber = data.from.replace('@c.us', '');
             const messageBody = data.body;
 
             // Check if message is from me (ignore outgoing messages to prevent loops)
