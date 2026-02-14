@@ -5,7 +5,13 @@ let model = null;
 
 if (process.env.GEMINI_API_KEY) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    model = genAI.getGenerativeModel({ model: "gemini-pro" });
+    model = genAI.getGenerativeModel({
+        model: "gemini-1.5-pro",
+        generationConfig: {
+            temperature: 0.7, // Higher creativity
+            maxOutputTokens: 100,
+        }
+    });
 } else {
     console.warn("GEMINI_API_KEY not found. AI features disabled.");
 }
@@ -126,9 +132,11 @@ Write the NEXT message to the user.
     try {
         const result = await model.generateContent(persona);
         const response = await result.response;
-        return response.text().trim();
+        const text = response.text().trim();
+        console.log(`[AI Generation] Step: ${step}, Input: "${userInput}" -> Output: "${text}"`);
+        return text;
     } catch (error) {
-        console.error("AI Generation Error:", error);
+        console.error("AI Generation Error details:", error);
         return null;
     }
 };
