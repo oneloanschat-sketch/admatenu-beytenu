@@ -63,80 +63,144 @@ const STEPS = {
     PROPERTY_OWNERSHIP: 'PROPERTY_OWNERSHIP',
     PROPERTY_DETAILS: 'PROPERTY_DETAILS',
     RISK_CHECK: 'RISK_CHECK',
+    RISK_CHECK: 'RISK_CHECK',
     CLOSING: 'CLOSING'
 };
 
-const getSession = async (phoneNumber) => {
-    const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('phone_number', phoneNumber)
-        .single();
+// Hybrid Storage: In-Memory Backup
+const localSessions = {};
 
-    if (error || !data) {
-        return null;
+const getSession = async (phoneNumber) => {
+    // 1. Try DB
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from('sessions')
+                .select('*')
+                .eq('phone_number', phoneNumber)
+                .single();
+
+            if (!error && data) {
+                // Sync local with DB
+                localSessions[phoneNumber] = data;
+                return data;
+            }
+        } catch (dbError) {
+            console.error('DB Read Error (Falling back to local):', dbError.message);
+        }
     }
-    return data;
+
+    // 2. Fallback to Local
+    const local = localSessions[phoneNumber];
+    if (local) {
+        console.log(`[Hybrid] Retrieved session for ${phoneNumber} from Memory.`);
+        return local;
+    }
+    return null;
 };
 
 const createSession = async (phoneNumber) => {
-    const { data, error } = await supabase
-        .from('sessions')
-        .insert([{ phone_number: phoneNumber, step: STEPS.GREETING, data: { language: 'he' } }])
-        .select()
-        .single();
+    const newSession = {
+        phone_number: phoneNumber,
+        step: STEPS.GREETING,
+        data: { language: 'he' },
+        created_at: new Date()
+    };
 
-    if (error) console.error('Error creating session:', error);
-    return data;
+    // 1. Write Local (Always succeeds)
+    localSessions[phoneNumber] = newSession;
+
+    // 2. Try DB
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .from('sessions')
+                .insert([newSession])
+                .select()
+                .single();
+
+            if (error) {
+                console.error('DB Create Error (Using Local):', error.message);
+            } else {
+                return data;
+            }
+        } catch (dbError) {
+            console.error('DB Create Exception:', dbError.message);
+        }
+    }
+    return newSession;
 };
 
 const updateSession = async (phoneNumber, step, sessionData) => {
-    await supabase
-        .from('sessions')
-        .update({ step, data: sessionData, last_active: new Date() })
-        .eq('phone_number', phoneNumber);
+    // 1. Update Local
+    if (localSessions[phoneNumber]) {
+        localSessions[phoneNumber].step = step;
+        localSessions[phoneNumber].data = sessionData;
+        localSessions[phoneNumber].last_active = new Date();
+    }
+
+    // 2. Try DB
+    if (supabase) {
+        try {
+            await supabase
+                .from('sessions')
+                .update({ step, data: sessionData, last_active: new Date() })
+                .eq('phone_number', phoneNumber);
+        } catch (dbError) {
+            console.error('DB Update Error (Local updated only):', dbError.message);
+        }
+    }
 };
 
 const saveLead = async (session) => {
-    const { data: existingLead } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('phone_number', session.phone_number)
-        .single();
-
-    if (existingLead) {
-        console.warn(`Double Lead detected for ${session.phone_number}`);
-        // Notify team about double lead
-        const adminPhone = process.env.ADMIN_PHONE;
-        if (adminPhone) {
-            await whatsappService.sendMessage(
-                adminPhone,
-                `⚠️ *DOUBLE LEAD ALERT*\nNumber: ${session.phone_number}\nThis number is already in the system.`
-            );
-        }
+    if (!supabase) {
+        console.warn('[Hybrid] DB not connected. Lead saving skipped (Data in memory):', session.data);
         return;
     }
 
-    const leadData = {
-        phone_number: session.phone_number,
-        full_name: session.data.full_name || 'N/A', // We don't explicitly ask name in flow, maybe extract from profile if possible, prompt says "identify user's full name" in greeting phase but usually WA API gives it. For now placeholder.
-        language: session.data.language,
-        loan_amount: session.data.loan_amount,
-        city: session.data.city,
-        purpose: session.data.purpose,
-        has_property: session.data.has_property === 'yes',
+    try {
+        const { data: existingLead } = await supabase
+            .from('leads')
+            .select('id')
+            .eq('phone_number', session.phone_number)
+            .single();
+
+        if (existingLead) {
+            console.warn(`Double Lead detected for ${session.phone_number}`);
+            return;
+        }
+
+        await supabase.from('leads').insert([{
+            phone_number: session.phone_number,
+            full_name: session.data.full_name || 'N/A',
+            language: session.data.language || 'he',
+            loan_amount: session.data.loan_amount,
+            city: session.data.city,
+            purpose: session.data.purpose,
+            has_property: session.data.has_property,
+            property_details: session.data.property_details,
+            risk_info: session.data.risk_info,
+            status: 'new',
+            created_at: new Date()
+        }]);
+        console.log(`Lead saved to DB: ${session.phone_number}`);
+    } catch (e) {
+        console.error('Failed to save lead to DB:', e.message);
+    }
+}; purpose: session.data.purpose,
+    has_property: session.data.has_property === 'yes',
         property_details: session.data.property_details,
-        risk_info: session.data.risk_info,
-        status: 'New'
+            risk_info: session.data.risk_info,
+                status: 'New'
     };
 
-    const { error } = await supabase.from('leads').insert([leadData]);
-    if (error) console.error('Error saving lead:', error);
+const { error } = await supabase.from('leads').insert([leadData]);
+if (error) console.error('Error saving lead:', error);
 
-    // WhatsApp Admin Notification
-    const adminPhone = process.env.ADMIN_PHONE;
-    if (adminPhone) {
-        const summary = `
+// WhatsApp Admin Notification
+const adminPhone = process.env.ADMIN_PHONE;
+if (adminPhone) {
+    const summary = `
 *New Lead Created!* 🚀
 Name: ${leadData.full_name}
 Phone: ${leadData.phone_number}
@@ -149,10 +213,10 @@ Risk: ${leadData.risk_info}
 Language: ${leadData.language}
         `.trim();
 
-        await whatsappService.sendMessage(adminPhone, summary);
-    } else {
-        console.warn('ADMIN_PHONE not set. Skipping admin notification.');
-    }
+    await whatsappService.sendMessage(adminPhone, summary);
+} else {
+    console.warn('ADMIN_PHONE not set. Skipping admin notification.');
+}
 };
 
 const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) => {
