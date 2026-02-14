@@ -1,5 +1,4 @@
-const franc = require('franc'); // We might need to install this or use simple regex if package size is concern. 
-// For simplicity and avoiding large deps, let's use regex for Hebrew/Arabic/Russian specific characters.
+// Simple regex for Hebrew/Arabic/Russian specific characters.
 
 const detectLanguage = (text) => {
     if (!text) return 'he'; // Default
