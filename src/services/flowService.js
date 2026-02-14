@@ -52,6 +52,7 @@ const MESSAGES = {
 
 const STEPS = {
     GREETING: 'GREETING',
+    GET_NAME: 'GET_NAME',
     LISTENING: 'LISTENING',
     QUALIFICATION: 'QUALIFICATION',
     DATA_COLLECTION_CITY: 'DATA_COLLECTION_CITY',
@@ -218,6 +219,13 @@ const processMessage = async (phoneNumber, messageBody) => {
 
     switch (step) {
         case STEPS.GREETING:
+            // User responded to "How are you?"
+            await sendResponse(phoneNumber, 'GET_NAME', session, 'listening', messageBody);
+            await updateSession(phoneNumber, STEPS.GET_NAME, session.data);
+            break;
+
+        case STEPS.GET_NAME:
+            session.data.full_name = messageBody;
             await sendResponse(phoneNumber, 'LISTENING', session, 'listening', messageBody);
             await updateSession(phoneNumber, STEPS.LISTENING, session.data);
             break;
