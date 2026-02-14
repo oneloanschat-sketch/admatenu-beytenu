@@ -102,11 +102,13 @@ const saveLead = async (session) => {
     if (existingLead) {
         console.warn(`Double Lead detected for ${session.phone_number}`);
         // Notify team about double lead
-        await emailService.sendEmail(
-            process.env.EMAIL_TO,
-            `DOUBLE LEAD ALERT: ${session.phone_number}`,
-            `Number already exists in system.`
-        );
+        const adminPhone = process.env.ADMIN_PHONE;
+        if (adminPhone) {
+            await whatsappService.sendMessage(
+                adminPhone,
+                `⚠️ *DOUBLE LEAD ALERT*\nNumber: ${session.phone_number}\nThis number is already in the system.`
+            );
+        }
         return;
     }
 
@@ -126,12 +128,26 @@ const saveLead = async (session) => {
     const { error } = await supabase.from('leads').insert([leadData]);
     if (error) console.error('Error saving lead:', error);
 
-    // Email Notification
-    await emailService.sendEmail(
-        process.env.EMAIL_TO,
-        `New Lead: ${leadData.phone_number}`,
-        JSON.stringify(leadData, null, 2)
-    );
+    // WhatsApp Admin Notification
+    const adminPhone = process.env.ADMIN_PHONE;
+    if (adminPhone) {
+        const summary = `
+*New Lead Created!* 🚀
+Name: ${leadData.full_name}
+Phone: ${leadData.phone_number}
+Amount: ${leadData.loan_amount}
+City: ${leadData.city}
+Purpose: ${leadData.purpose}
+Property: ${leadData.has_property ? 'Yes' : 'No'}
+Details: ${leadData.property_details}
+Risk: ${leadData.risk_info}
+Language: ${leadData.language}
+        `.trim();
+
+        await whatsappService.sendMessage(adminPhone, summary);
+    } else {
+        console.warn('ADMIN_PHONE not set. Skipping admin notification.');
+    }
 };
 
 const processMessage = async (phoneNumber, messageBody) => {
