@@ -204,6 +204,8 @@ Language: ${leadData.language}
 
             await whatsappService.sendMessage(adminPhone, summary);
         }
+    } catch (e) {
+        console.error('Failed to save lead to DB:', e.message);
     }
 };
 
