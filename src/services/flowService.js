@@ -151,6 +151,21 @@ Language: ${leadData.language}
     }
 };
 
+const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) => {
+    const lang = session.data.language || 'he';
+    const context = session.data;
+
+    // Generate AI response
+    const aiText = await aiService.generateResponse(step, userInput, context, lang);
+
+    if (aiText) {
+        await whatsappService.sendMessage(phoneNumber, aiText);
+    } else {
+        // Fallback to static message
+        await whatsappService.sendMessage(phoneNumber, MESSAGES[lang][fallbackKey]);
+    }
+};
+
 const processMessage = async (phoneNumber, messageBody) => {
     let session = await getSession(phoneNumber);
 
@@ -160,24 +175,21 @@ const processMessage = async (phoneNumber, messageBody) => {
 
         if (!session) {
             console.error(`CRITICAL: Failed to create session for ${phoneNumber}. Database connectivity issue?`);
-            // Optional: fallback response if DB is down
             await whatsappService.sendMessage(phoneNumber, "Service temporarily unavailable. Please try again later.");
             return;
         }
 
-        // Determine language from first message if possible, or default to He
         const lang = detectLanguage(messageBody);
         if (session.data) {
             session.data.language = lang;
         } else {
-            // Should not happen if session created
             console.error('Session created but data is null');
             return;
         }
 
-        // Send Greeting
         console.log(`Sending greeting to ${phoneNumber} in ${lang}`);
-        await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].greeting);
+        // For greeting, we don't have previous user input relevant to the persona yet, or we do (the "Hi").
+        await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
         await updateSession(phoneNumber, STEPS.GREETING, session.data);
         return;
     }
@@ -187,54 +199,47 @@ const processMessage = async (phoneNumber, messageBody) => {
     const lang = session.data.language || 'he';
     const step = session.step;
 
-    // Handle flow logic
     switch (step) {
         case STEPS.GREETING:
-            // User responded to "How are you?"
-            // Prompt says: Ask how we can help.
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].listening);
+            await sendResponse(phoneNumber, 'LISTENING', session, 'listening', messageBody);
             await updateSession(phoneNumber, STEPS.LISTENING, session.data);
             break;
 
         case STEPS.LISTENING:
-            // User told us how we can help.
-            // Prompt says: Ask for loan amount.
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].qualification_amount);
+            await sendResponse(phoneNumber, 'INFO_AMOUNT', session, 'qualification_amount', messageBody);
             await updateSession(phoneNumber, STEPS.QUALIFICATION, session.data);
             break;
 
         case STEPS.QUALIFICATION:
-            // Use AI to extract amount
             const aiAmountResponse = await aiService.analyzeInput(messageBody, 'QUALIFICATION', lang);
             let amount = null;
 
             if (aiAmountResponse && aiAmountResponse.amount) {
                 amount = aiAmountResponse.amount;
             } else {
-                // Fallback to regex if AI fails or returns null
                 amount = parseInt(messageBody.replace(/\D/g, ''));
             }
 
             if (!amount || amount < 200000) {
-                await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].rejection);
-                // Maybe delete session or mark as closed?
+                // REJECTION
+                await sendResponse(phoneNumber, 'REJECTION', session, 'rejection', messageBody);
                 await updateSession(phoneNumber, 'CLOSED', session.data);
                 return;
             }
             session.data.loan_amount = amount;
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].city);
+            await sendResponse(phoneNumber, 'INFO_CITY', session, 'city', messageBody);
             await updateSession(phoneNumber, STEPS.DATA_COLLECTION_CITY, session.data);
             break;
 
         case STEPS.DATA_COLLECTION_CITY:
             session.data.city = messageBody;
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].purpose);
+            await sendResponse(phoneNumber, 'INFO_PURPOSE', session, 'purpose', messageBody);
             await updateSession(phoneNumber, STEPS.DATA_COLLECTION_PURPOSE, session.data);
             break;
 
         case STEPS.DATA_COLLECTION_PURPOSE:
             session.data.purpose = messageBody;
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].property_ownership);
+            await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_ownership', messageBody);
             await updateSession(phoneNumber, STEPS.PROPERTY_OWNERSHIP, session.data);
             break;
 
@@ -245,35 +250,33 @@ const processMessage = async (phoneNumber, messageBody) => {
             if (aiPropertyResponse && aiPropertyResponse.has_property !== null) {
                 hasProperty = aiPropertyResponse.has_property;
             } else {
-                // Fallback to simple heuristic
                 hasProperty = messageBody.toLowerCase().includes('yes') || messageBody.toLowerCase().includes('ken') || messageBody.toLowerCase().includes('naam') || messageBody.includes('כן');
             }
 
             session.data.has_property = hasProperty ? 'yes' : 'no';
 
-            // Prompt says: Under whose name is it registered? ...
-            // Even if they say 'no', the prompt implies we ask details? "If >= 200k: Proceed".
-            // Actually, if they don't own property, asset-backed loan might be impossible.
-            // For this version, let's ask details regardless or assume the flow continues.
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].property_details);
+            // Ask for property details regardless for now, or customize based on Yes/No
+            await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_details', messageBody);
+            // Note: Reuse INFO_PROPERTY or make new step INFO_DETAILS? 
+            // The prompt has INFO_PROPERTY. Let's stick to it or add INFO_DETAILS to prompt if needed. 
+            // 'INFO_PROPERTY' in prompt covers "Ask details".
             await updateSession(phoneNumber, STEPS.PROPERTY_DETAILS, session.data);
             break;
 
         case STEPS.PROPERTY_DETAILS:
             session.data.property_details = messageBody;
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].risk_check);
+            await sendResponse(phoneNumber, 'RISK_CHECK', session, 'risk_check', messageBody);
             await updateSession(phoneNumber, STEPS.RISK_CHECK, session.data);
             break;
 
         case STEPS.RISK_CHECK:
             session.data.risk_info = messageBody;
             await saveLead(session);
-            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].closing);
+            await sendResponse(phoneNumber, 'CLOSING', session, 'closing', messageBody);
             await updateSession(phoneNumber, 'COMPLETED', session.data);
             break;
 
         default:
-            // Closed or unknown state
             break;
     }
 };
