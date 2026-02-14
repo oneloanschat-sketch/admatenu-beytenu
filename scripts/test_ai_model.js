@@ -10,7 +10,7 @@ async function testModel() {
 
     console.log("Checking key ending in:", apiKey.slice(-4));
 
-    const modelName = "gemini-3.0-pro"; // Testing the requested model
+    const modelName = "gemini-1.5-flash"; // The most reliable free-tier model
     console.log(`Testing connectivity for model: ${modelName}...`);
 
     try {
