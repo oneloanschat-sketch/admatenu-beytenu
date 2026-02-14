@@ -166,8 +166,27 @@ const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) 
     }
 };
 
+const RESET_KEYWORDS = ['hi', 'hello', 'שלום', 'היי', 'אהלן', 'start', 'reset', 'restart'];
+
 const processMessage = async (phoneNumber, messageBody) => {
+    const lowerBody = messageBody.toLowerCase().trim();
     let session = await getSession(phoneNumber);
+
+    // Check for explicit reset/greeting to restart flow
+    if (RESET_KEYWORDS.some(kw => lowerBody === kw || lowerBody.startsWith(kw + ' '))) {
+        console.log(`Resetting session for ${phoneNumber} due to greeting/reset keyword.`);
+        // If session exists, reset it. If not, create later.
+        if (session) {
+            const lang = detectLanguage(messageBody);
+            session.data = { language: lang }; // Clear other data
+            await updateSession(phoneNumber, STEPS.GREETING, session.data);
+            // We want to fall through to "if (!session)" logic? No, session exists now.
+            // We want to send greeting.
+            await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
+            return;
+        }
+        // If no session, it will be created below naturally.
+    }
 
     if (!session) {
         console.log(`Creating new session for ${phoneNumber}...`);
@@ -188,14 +207,12 @@ const processMessage = async (phoneNumber, messageBody) => {
         }
 
         console.log(`Sending greeting to ${phoneNumber} in ${lang}`);
-        // For greeting, we don't have previous user input relevant to the persona yet, or we do (the "Hi").
         await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
         await updateSession(phoneNumber, STEPS.GREETING, session.data);
         return;
     }
 
     console.log(`Existing session for ${phoneNumber}: step=${session.step}`);
-
     const lang = session.data.language || 'he';
     const step = session.step;
 
