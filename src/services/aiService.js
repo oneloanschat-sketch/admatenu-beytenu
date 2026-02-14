@@ -6,9 +6,9 @@ let model = null;
 if (process.env.GEMINI_API_KEY) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     model = genAI.getGenerativeModel({
-        model: "gemini-3.0-pro", // User requested Gemini 3 Pro
+        model: "gemini-3-pro-preview", // Validated model ID from list
         generationConfig: {
-            temperature: 0.9, // Higher creativity for 3.0
+            temperature: 0.9,
             maxOutputTokens: 200,
         }
     });
