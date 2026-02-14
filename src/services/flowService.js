@@ -207,216 +207,213 @@ Language: ${leadData.language}
     } catch (e) {
         console.error('Failed to save lead to DB:', e.message);
     }
-}; else {
-    console.warn('ADMIN_PHONE not set. Skipping admin notification.');
-}
-};
 
-const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) => {
-    const lang = session.data.language || 'he';
-    const context = session.data;
 
-    // Generate AI response
-    const aiText = await aiService.generateResponse(step, userInput, context, lang);
+    const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) => {
+        const lang = session.data.language || 'he';
+        const context = session.data;
 
-    if (aiText) {
-        await whatsappService.sendMessage(phoneNumber, aiText);
-    } else {
-        // Fallback to static message
-        await whatsappService.sendMessage(phoneNumber, MESSAGES[lang][fallbackKey]);
-    }
-};
+        // Generate AI response
+        const aiText = await aiService.generateResponse(step, userInput, context, lang);
 
-const RESET_KEYWORDS = ['hi', 'hello', 'שלום', 'היי', 'אהלן', 'start', 'reset', 'restart'];
-
-const processMessage = async (phoneNumber, messageBody) => {
-    const lowerBody = messageBody.toLowerCase().trim();
-    let session = await getSession(phoneNumber);
-
-    // Check for explicit reset/greeting to restart flow
-    if (RESET_KEYWORDS.some(kw => lowerBody === kw || lowerBody.startsWith(kw + ' '))) {
-        console.log(`Resetting session for ${phoneNumber} due to greeting/reset keyword.`);
-        // If session exists, reset it. If not, create later.
-        if (session) {
-            const lang = detectLanguage(messageBody);
-            session.data = { language: lang }; // Clear other data
-            await updateSession(phoneNumber, STEPS.GREETING, session.data);
-            // We want to fall through to "if (!session)" logic? No, session exists now.
-            // We want to send greeting.
-            await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
-            return;
-        }
-        // If no session, it will be created below naturally.
-    }
-
-    if (!session) {
-        console.log(`Creating new session for ${phoneNumber}...`);
-        session = await createSession(phoneNumber);
-
-        if (!session) {
-            console.error(`CRITICAL: Failed to create session for ${phoneNumber}. Database connectivity issue?`);
-            await whatsappService.sendMessage(phoneNumber, "Service temporarily unavailable. Please try again later.");
-            return;
-        }
-
-        const lang = detectLanguage(messageBody);
-        if (session.data) {
-            session.data.language = lang;
+        if (aiText) {
+            await whatsappService.sendMessage(phoneNumber, aiText);
         } else {
-            console.error('Session created but data is null');
-            return;
+            // Fallback to static message
+            await whatsappService.sendMessage(phoneNumber, MESSAGES[lang][fallbackKey]);
         }
+    };
 
-        console.log(`Sending greeting to ${phoneNumber} in ${lang}`);
-        await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
-        await updateSession(phoneNumber, STEPS.GREETING, session.data);
-        return;
-    }
+    const RESET_KEYWORDS = ['hi', 'hello', 'שלום', 'היי', 'אהלן', 'start', 'reset', 'restart'];
 
-    console.log(`Existing session for ${phoneNumber}: step=${session.step}`);
-    const lang = session.data.language || 'he';
-    const step = session.step;
+    const processMessage = async (phoneNumber, messageBody) => {
+        const lowerBody = messageBody.toLowerCase().trim();
+        let session = await getSession(phoneNumber);
 
-    switch (step) {
-        case STEPS.GREETING:
-            // User responded to "How are you?"
-            await sendResponse(phoneNumber, 'GET_NAME', session, 'get_name', messageBody);
-            await updateSession(phoneNumber, STEPS.GET_NAME, session.data);
-            break;
-
-        case STEPS.GET_NAME:
-            const valName = await aiService.validateInput(messageBody, 'GET_NAME', lang);
-            if (!valName.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valName.suggestedResponse || MESSAGES[lang].unknown);
-                return; // Stay in GET_NAME
-            }
-            session.data.full_name = messageBody;
-            await sendResponse(phoneNumber, 'LISTENING', session, 'listening', messageBody);
-            await updateSession(phoneNumber, STEPS.LISTENING, session.data);
-            break;
-
-        case STEPS.LISTENING:
-            // Listening usually doesn't need validation as it's a transition, but let's be safe if they say nonsense
-            const valListen = await aiService.validateInput(messageBody, 'LISTENING', lang);
-            if (!valListen.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valListen.suggestedResponse || MESSAGES[lang].unknown);
+        // Check for explicit reset/greeting to restart flow
+        if (RESET_KEYWORDS.some(kw => lowerBody === kw || lowerBody.startsWith(kw + ' '))) {
+            console.log(`Resetting session for ${phoneNumber} due to greeting/reset keyword.`);
+            // If session exists, reset it. If not, create later.
+            if (session) {
+                const lang = detectLanguage(messageBody);
+                session.data = { language: lang }; // Clear other data
+                await updateSession(phoneNumber, STEPS.GREETING, session.data);
+                // We want to fall through to "if (!session)" logic? No, session exists now.
+                // We want to send greeting.
+                await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
                 return;
             }
-            await sendResponse(phoneNumber, 'INFO_AMOUNT', session, 'qualification_amount', messageBody);
-            await updateSession(phoneNumber, STEPS.QUALIFICATION, session.data);
-            break;
+            // If no session, it will be created below naturally.
+        }
 
-        case STEPS.QUALIFICATION:
-            const aiAmountResponse = await aiService.analyzeInput(messageBody, 'QUALIFICATION', lang);
-            let amount = null;
+        if (!session) {
+            console.log(`Creating new session for ${phoneNumber}...`);
+            session = await createSession(phoneNumber);
 
-            if (aiAmountResponse && aiAmountResponse.amount) {
-                amount = aiAmountResponse.amount;
-            } else {
-                amount = parseInt(messageBody.replace(/\D/g, ''));
+            if (!session) {
+                console.error(`CRITICAL: Failed to create session for ${phoneNumber}. Database connectivity issue?`);
+                await whatsappService.sendMessage(phoneNumber, "Service temporarily unavailable. Please try again later.");
+                return;
             }
 
-            if (!amount || amount < 200000) {
-                // Check if it was an objection or nonsense before rejecting?
-                // Actually amount validation is tricky. If they say "Banana", amount is null.
-                // We should probably validate first.
-                const valAmount = await aiService.validateInput(messageBody, 'QUALIFICATION', lang);
-                if (!valAmount.isValid) {
-                    await whatsappService.sendMessage(phoneNumber, valAmount.suggestedResponse || MESSAGES[lang].unknown);
+            const lang = detectLanguage(messageBody);
+            if (session.data) {
+                session.data.language = lang;
+            } else {
+                console.error('Session created but data is null');
+                return;
+            }
+
+            console.log(`Sending greeting to ${phoneNumber} in ${lang}`);
+            await sendResponse(phoneNumber, 'GREETING', session, 'greeting', messageBody);
+            await updateSession(phoneNumber, STEPS.GREETING, session.data);
+            return;
+        }
+
+        console.log(`Existing session for ${phoneNumber}: step=${session.step}`);
+        const lang = session.data.language || 'he';
+        const step = session.step;
+
+        switch (step) {
+            case STEPS.GREETING:
+                // User responded to "How are you?"
+                await sendResponse(phoneNumber, 'GET_NAME', session, 'get_name', messageBody);
+                await updateSession(phoneNumber, STEPS.GET_NAME, session.data);
+                break;
+
+            case STEPS.GET_NAME:
+                const valName = await aiService.validateInput(messageBody, 'GET_NAME', lang);
+                if (!valName.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valName.suggestedResponse || MESSAGES[lang].unknown);
+                    return; // Stay in GET_NAME
+                }
+                session.data.full_name = messageBody;
+                await sendResponse(phoneNumber, 'LISTENING', session, 'listening', messageBody);
+                await updateSession(phoneNumber, STEPS.LISTENING, session.data);
+                break;
+
+            case STEPS.LISTENING:
+                // Listening usually doesn't need validation as it's a transition, but let's be safe if they say nonsense
+                const valListen = await aiService.validateInput(messageBody, 'LISTENING', lang);
+                if (!valListen.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valListen.suggestedResponse || MESSAGES[lang].unknown);
+                    return;
+                }
+                await sendResponse(phoneNumber, 'INFO_AMOUNT', session, 'qualification_amount', messageBody);
+                await updateSession(phoneNumber, STEPS.QUALIFICATION, session.data);
+                break;
+
+            case STEPS.QUALIFICATION:
+                const aiAmountResponse = await aiService.analyzeInput(messageBody, 'QUALIFICATION', lang);
+                let amount = null;
+
+                if (aiAmountResponse && aiAmountResponse.amount) {
+                    amount = aiAmountResponse.amount;
+                } else {
+                    amount = parseInt(messageBody.replace(/\D/g, ''));
+                }
+
+                if (!amount || amount < 200000) {
+                    // Check if it was an objection or nonsense before rejecting?
+                    // Actually amount validation is tricky. If they say "Banana", amount is null.
+                    // We should probably validate first.
+                    const valAmount = await aiService.validateInput(messageBody, 'QUALIFICATION', lang);
+                    if (!valAmount.isValid) {
+                        await whatsappService.sendMessage(phoneNumber, valAmount.suggestedResponse || MESSAGES[lang].unknown);
+                        return;
+                    }
+
+                    // If valid but under 200k, reject.
+                    await sendResponse(phoneNumber, 'REJECTION', session, 'rejection', messageBody);
+                    await updateSession(phoneNumber, 'CLOSED', session.data);
+                    return;
+                }
+                session.data.loan_amount = amount;
+                await sendResponse(phoneNumber, 'INFO_CITY', session, 'city', messageBody);
+                await updateSession(phoneNumber, STEPS.DATA_COLLECTION_CITY, session.data);
+                break;
+
+            case STEPS.DATA_COLLECTION_CITY:
+                const valCity = await aiService.validateInput(messageBody, 'DATA_COLLECTION_CITY', lang);
+                if (!valCity.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valCity.suggestedResponse || MESSAGES[lang].city); // Fallback to re-asking
+                    return;
+                }
+                session.data.city = messageBody;
+                await sendResponse(phoneNumber, 'INFO_PURPOSE', session, 'purpose', messageBody);
+                await updateSession(phoneNumber, STEPS.DATA_COLLECTION_PURPOSE, session.data);
+                break;
+
+            case STEPS.DATA_COLLECTION_PURPOSE:
+                const valPurpose = await aiService.validateInput(messageBody, 'DATA_COLLECTION_PURPOSE', lang);
+                if (!valPurpose.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valPurpose.suggestedResponse || MESSAGES[lang].purpose);
+                    return;
+                }
+                session.data.purpose = messageBody;
+                await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_ownership', messageBody);
+                await updateSession(phoneNumber, STEPS.PROPERTY_OWNERSHIP, session.data);
+                break;
+
+            case STEPS.PROPERTY_OWNERSHIP:
+                const valProp = await aiService.validateInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
+                if (!valProp.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valProp.suggestedResponse || MESSAGES[lang].property_ownership);
                     return;
                 }
 
-                // If valid but under 200k, reject.
-                await sendResponse(phoneNumber, 'REJECTION', session, 'rejection', messageBody);
-                await updateSession(phoneNumber, 'CLOSED', session.data);
-                return;
-            }
-            session.data.loan_amount = amount;
-            await sendResponse(phoneNumber, 'INFO_CITY', session, 'city', messageBody);
-            await updateSession(phoneNumber, STEPS.DATA_COLLECTION_CITY, session.data);
-            break;
+                const aiPropertyResponse = await aiService.analyzeInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
+                let hasProperty = false;
 
-        case STEPS.DATA_COLLECTION_CITY:
-            const valCity = await aiService.validateInput(messageBody, 'DATA_COLLECTION_CITY', lang);
-            if (!valCity.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valCity.suggestedResponse || MESSAGES[lang].city); // Fallback to re-asking
-                return;
-            }
-            session.data.city = messageBody;
-            await sendResponse(phoneNumber, 'INFO_PURPOSE', session, 'purpose', messageBody);
-            await updateSession(phoneNumber, STEPS.DATA_COLLECTION_PURPOSE, session.data);
-            break;
+                if (aiPropertyResponse && aiPropertyResponse.has_property !== null) {
+                    hasProperty = aiPropertyResponse.has_property;
+                } else {
+                    hasProperty = messageBody.toLowerCase().includes('yes') || messageBody.toLowerCase().includes('ken') || messageBody.toLowerCase().includes('naam') || messageBody.includes('כן');
+                }
 
-        case STEPS.DATA_COLLECTION_PURPOSE:
-            const valPurpose = await aiService.validateInput(messageBody, 'DATA_COLLECTION_PURPOSE', lang);
-            if (!valPurpose.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valPurpose.suggestedResponse || MESSAGES[lang].purpose);
-                return;
-            }
-            session.data.purpose = messageBody;
-            await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_ownership', messageBody);
-            await updateSession(phoneNumber, STEPS.PROPERTY_OWNERSHIP, session.data);
-            break;
+                session.data.has_property = hasProperty ? 'yes' : 'no';
 
-        case STEPS.PROPERTY_OWNERSHIP:
-            const valProp = await aiService.validateInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
-            if (!valProp.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valProp.suggestedResponse || MESSAGES[lang].property_ownership);
-                return;
-            }
+                // Ask for property details regardless for now, or customize based on Yes/No
+                await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_details', messageBody);
+                // Note: Reuse INFO_PROPERTY or make new step INFO_DETAILS? 
+                // The prompt has INFO_PROPERTY. Let's stick to it or add INFO_DETAILS to prompt if needed. 
+                // 'INFO_PROPERTY' in prompt covers "Ask details".
+                await updateSession(phoneNumber, STEPS.PROPERTY_DETAILS, session.data);
+                break;
 
-            const aiPropertyResponse = await aiService.analyzeInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
-            let hasProperty = false;
+            case STEPS.PROPERTY_DETAILS:
+                const valDetails = await aiService.validateInput(messageBody, 'PROPERTY_DETAILS', lang);
+                if (!valDetails.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valDetails.suggestedResponse || MESSAGES[lang].property_details);
+                    return;
+                }
+                session.data.property_details = messageBody;
+                await sendResponse(phoneNumber, 'RISK_CHECK', session, 'risk_check', messageBody);
+                await updateSession(phoneNumber, STEPS.RISK_CHECK, session.data);
+                break;
 
-            if (aiPropertyResponse && aiPropertyResponse.has_property !== null) {
-                hasProperty = aiPropertyResponse.has_property;
-            } else {
-                hasProperty = messageBody.toLowerCase().includes('yes') || messageBody.toLowerCase().includes('ken') || messageBody.toLowerCase().includes('naam') || messageBody.includes('כן');
-            }
+            case STEPS.RISK_CHECK:
+                const valRisk = await aiService.validateInput(messageBody, 'RISK_CHECK', lang);
+                if (!valRisk.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valRisk.suggestedResponse || MESSAGES[lang].risk_check);
+                    return;
+                }
+                session.data.risk_info = messageBody;
+                await saveLead(session);
+                await sendResponse(phoneNumber, 'CLOSING', session, 'closing', messageBody);
+                await updateSession(phoneNumber, 'COMPLETED', session.data);
+                break;
 
-            session.data.has_property = hasProperty ? 'yes' : 'no';
+            default:
+                break;
+        }
+    };
 
-            // Ask for property details regardless for now, or customize based on Yes/No
-            await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_details', messageBody);
-            // Note: Reuse INFO_PROPERTY or make new step INFO_DETAILS? 
-            // The prompt has INFO_PROPERTY. Let's stick to it or add INFO_DETAILS to prompt if needed. 
-            // 'INFO_PROPERTY' in prompt covers "Ask details".
-            await updateSession(phoneNumber, STEPS.PROPERTY_DETAILS, session.data);
-            break;
+    const injectDb = (mockDb) => {
+        supabase = mockDb;
+    };
 
-        case STEPS.PROPERTY_DETAILS:
-            const valDetails = await aiService.validateInput(messageBody, 'PROPERTY_DETAILS', lang);
-            if (!valDetails.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valDetails.suggestedResponse || MESSAGES[lang].property_details);
-                return;
-            }
-            session.data.property_details = messageBody;
-            await sendResponse(phoneNumber, 'RISK_CHECK', session, 'risk_check', messageBody);
-            await updateSession(phoneNumber, STEPS.RISK_CHECK, session.data);
-            break;
-
-        case STEPS.RISK_CHECK:
-            const valRisk = await aiService.validateInput(messageBody, 'RISK_CHECK', lang);
-            if (!valRisk.isValid) {
-                await whatsappService.sendMessage(phoneNumber, valRisk.suggestedResponse || MESSAGES[lang].risk_check);
-                return;
-            }
-            session.data.risk_info = messageBody;
-            await saveLead(session);
-            await sendResponse(phoneNumber, 'CLOSING', session, 'closing', messageBody);
-            await updateSession(phoneNumber, 'COMPLETED', session.data);
-            break;
-
-        default:
-            break;
-    }
-};
-
-const injectDb = (mockDb) => {
-    supabase = mockDb;
-};
-
-module.exports = {
-    processMessage,
-    injectDb
-};
+    module.exports = {
+        processMessage,
+        injectDb
+    };
