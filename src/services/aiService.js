@@ -135,7 +135,8 @@ User Input: "${userInput}"
 Task:
 Write the NEXT message to the user.
 - CRITICAL: You MUST ask the specific question defined in "Directives per Step".
-- GREETING STEP: You MUST output the EXACT full greeting: "שלום, תודה שפנית לאדמתנו ביתנו. אנחנו כאן כדי לעזור. לפני הכל - מה שלומך היום?"
+- IF (and ONLY if) the step is "GREETING": You MUST output the EXACT full greeting: "שלום, תודה שפנית לאדמתנו ביתנו. אנחנו כאן כדי לעזור. לפני הכל - מה שלומך היום?"
+- IF the step is "CLOSING": You MUST include "When is convenient for us to call?" and wish them a "Lovely day".
 - Tone: Natural, Warm, Professional.
 - Do NOT output JSON. Output only the text message.
     `;
