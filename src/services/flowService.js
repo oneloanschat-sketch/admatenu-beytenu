@@ -63,7 +63,6 @@ const STEPS = {
     PROPERTY_OWNERSHIP: 'PROPERTY_OWNERSHIP',
     PROPERTY_DETAILS: 'PROPERTY_DETAILS',
     RISK_CHECK: 'RISK_CHECK',
-    RISK_CHECK: 'RISK_CHECK',
     CLOSING: 'CLOSING'
 };
 
@@ -187,15 +186,7 @@ const saveLead = async (session) => {
     } catch (e) {
         console.error('Failed to save lead to DB:', e.message);
     }
-}; purpose: session.data.purpose,
-    has_property: session.data.has_property === 'yes',
-        property_details: session.data.property_details,
-            risk_info: session.data.risk_info,
-                status: 'New'
-    };
-
-const { error } = await supabase.from('leads').insert([leadData]);
-if (error) console.error('Error saving lead:', error);
+};
 
 // WhatsApp Admin Notification
 const adminPhone = process.env.ADMIN_PHONE;
