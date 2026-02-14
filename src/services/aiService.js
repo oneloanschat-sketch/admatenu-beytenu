@@ -9,7 +9,7 @@ if (process.env.GEMINI_API_KEY) {
         model: "gemini-2.5-flash", // Verified WORKING model
         generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 200,
+            maxOutputTokens: 1000,
         }
     });
 } else {
@@ -132,7 +132,12 @@ System Prompt: Admatenu Betenu - Financial AI Agent No. 1
 Current Interaction Step: ${step}
 User Input: "${userInput}"
 
-Task: Write the NEXT message to the user following the Flow and Tone rules exactly. Output ONLY the message text.
+Task:
+Write the NEXT message to the user.
+- CRITICAL: You MUST ask the specific question defined in "Directives per Step".
+- GREETING STEP: You MUST output the EXACT full greeting: "שלום, תודה שפנית לאדמתנו ביתנו. אנחנו כאן כדי לעזור. לפני הכל - מה שלומך היום?"
+- Tone: Natural, Warm, Professional.
+- Do NOT output JSON. Output only the text message.
     `;
 
     try {
