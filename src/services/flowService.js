@@ -169,7 +169,7 @@ const saveLead = async (session) => {
             return;
         }
 
-        await supabase.from('leads').insert([{
+        const leadData = {
             phone_number: session.phone_number,
             full_name: session.data.full_name || 'N/A',
             language: session.data.language || 'he',
@@ -181,31 +181,33 @@ const saveLead = async (session) => {
             risk_info: session.data.risk_info,
             status: 'new',
             created_at: new Date()
-        }]);
-        console.log(`Lead saved to DB: ${session.phone_number}`);
-    } catch (e) {
-        console.error('Failed to save lead to DB:', e.message);
-    }
-};
+        };
 
-// WhatsApp Admin Notification
-const adminPhone = process.env.ADMIN_PHONE;
-if (adminPhone) {
-    const summary = `
+        await supabase.from('leads').insert([leadData]);
+        console.log(`Lead saved to DB: ${session.phone_number}`);
+
+        // WhatsApp Admin Notification
+        const adminPhone = process.env.ADMIN_PHONE;
+        if (adminPhone) {
+            const summary = `
 *New Lead Created!* 🚀
 Name: ${leadData.full_name}
 Phone: ${leadData.phone_number}
 Amount: ${leadData.loan_amount}
 City: ${leadData.city}
 Purpose: ${leadData.purpose}
-Property: ${leadData.has_property ? 'Yes' : 'No'}
+Property: ${leadData.has_property}
 Details: ${leadData.property_details}
 Risk: ${leadData.risk_info}
 Language: ${leadData.language}
-        `.trim();
+            `.trim();
 
-    await whatsappService.sendMessage(adminPhone, summary);
-} else {
+            await whatsappService.sendMessage(adminPhone, summary);
+        }
+    } catch (e) {
+        console.error('Failed to save lead to DB:', e.message);
+    }
+}; else {
     console.warn('ADMIN_PHONE not set. Skipping admin notification.');
 }
 };
