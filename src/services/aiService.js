@@ -6,10 +6,10 @@ let model = null;
 if (process.env.GEMINI_API_KEY) {
     genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     model = genAI.getGenerativeModel({
-        model: "gemini-1.5-pro",
+        model: "gemini-3.0-pro", // User requested Gemini 3 Pro
         generationConfig: {
-            temperature: 0.7, // Higher creativity
-            maxOutputTokens: 100,
+            temperature: 0.9, // Higher creativity for 3.0
+            maxOutputTokens: 200,
         }
     });
 } else {
