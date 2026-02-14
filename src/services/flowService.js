@@ -7,7 +7,7 @@ const { detectLanguage } = require('../utils/language');
 // Dictionary for multilingual responses
 const MESSAGES = {
     he: {
-        greeting: "שלום, ברוכים הבאים לאדמתנו ביתנו. מה שלומך?",
+        greeting: "שלום (v2.0), ברוכים הבאים לאדמתנו ביתנו. מה שלומך?",
         get_name: "נעים מאוד! כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?",
         listening: "אני מבין, אנו עוזרים למשפחות במצבים דומים מדי יום. איך נוכל לעזור?",
         qualification_amount: "מהו סכום ההלוואה המבוקש? (בשקלים)",
