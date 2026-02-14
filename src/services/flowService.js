@@ -228,12 +228,23 @@ const processMessage = async (phoneNumber, messageBody) => {
             break;
 
         case STEPS.GET_NAME:
+            const valName = await aiService.validateInput(messageBody, 'GET_NAME', lang);
+            if (!valName.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valName.suggestedResponse || MESSAGES[lang].unknown);
+                return; // Stay in GET_NAME
+            }
             session.data.full_name = messageBody;
             await sendResponse(phoneNumber, 'LISTENING', session, 'listening', messageBody);
             await updateSession(phoneNumber, STEPS.LISTENING, session.data);
             break;
 
         case STEPS.LISTENING:
+            // Listening usually doesn't need validation as it's a transition, but let's be safe if they say nonsense
+            const valListen = await aiService.validateInput(messageBody, 'LISTENING', lang);
+            if (!valListen.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valListen.suggestedResponse || MESSAGES[lang].unknown);
+                return;
+            }
             await sendResponse(phoneNumber, 'INFO_AMOUNT', session, 'qualification_amount', messageBody);
             await updateSession(phoneNumber, STEPS.QUALIFICATION, session.data);
             break;
@@ -249,7 +260,16 @@ const processMessage = async (phoneNumber, messageBody) => {
             }
 
             if (!amount || amount < 200000) {
-                // REJECTION
+                // Check if it was an objection or nonsense before rejecting?
+                // Actually amount validation is tricky. If they say "Banana", amount is null.
+                // We should probably validate first.
+                const valAmount = await aiService.validateInput(messageBody, 'QUALIFICATION', lang);
+                if (!valAmount.isValid) {
+                    await whatsappService.sendMessage(phoneNumber, valAmount.suggestedResponse || MESSAGES[lang].unknown);
+                    return;
+                }
+
+                // If valid but under 200k, reject.
                 await sendResponse(phoneNumber, 'REJECTION', session, 'rejection', messageBody);
                 await updateSession(phoneNumber, 'CLOSED', session.data);
                 return;
@@ -260,18 +280,34 @@ const processMessage = async (phoneNumber, messageBody) => {
             break;
 
         case STEPS.DATA_COLLECTION_CITY:
+            const valCity = await aiService.validateInput(messageBody, 'DATA_COLLECTION_CITY', lang);
+            if (!valCity.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valCity.suggestedResponse || MESSAGES[lang].city); // Fallback to re-asking
+                return;
+            }
             session.data.city = messageBody;
             await sendResponse(phoneNumber, 'INFO_PURPOSE', session, 'purpose', messageBody);
             await updateSession(phoneNumber, STEPS.DATA_COLLECTION_PURPOSE, session.data);
             break;
 
         case STEPS.DATA_COLLECTION_PURPOSE:
+            const valPurpose = await aiService.validateInput(messageBody, 'DATA_COLLECTION_PURPOSE', lang);
+            if (!valPurpose.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valPurpose.suggestedResponse || MESSAGES[lang].purpose);
+                return;
+            }
             session.data.purpose = messageBody;
             await sendResponse(phoneNumber, 'INFO_PROPERTY', session, 'property_ownership', messageBody);
             await updateSession(phoneNumber, STEPS.PROPERTY_OWNERSHIP, session.data);
             break;
 
         case STEPS.PROPERTY_OWNERSHIP:
+            const valProp = await aiService.validateInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
+            if (!valProp.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valProp.suggestedResponse || MESSAGES[lang].property_ownership);
+                return;
+            }
+
             const aiPropertyResponse = await aiService.analyzeInput(messageBody, 'PROPERTY_OWNERSHIP', lang);
             let hasProperty = false;
 
@@ -292,12 +328,22 @@ const processMessage = async (phoneNumber, messageBody) => {
             break;
 
         case STEPS.PROPERTY_DETAILS:
+            const valDetails = await aiService.validateInput(messageBody, 'PROPERTY_DETAILS', lang);
+            if (!valDetails.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valDetails.suggestedResponse || MESSAGES[lang].property_details);
+                return;
+            }
             session.data.property_details = messageBody;
             await sendResponse(phoneNumber, 'RISK_CHECK', session, 'risk_check', messageBody);
             await updateSession(phoneNumber, STEPS.RISK_CHECK, session.data);
             break;
 
         case STEPS.RISK_CHECK:
+            const valRisk = await aiService.validateInput(messageBody, 'RISK_CHECK', lang);
+            if (!valRisk.isValid) {
+                await whatsappService.sendMessage(phoneNumber, valRisk.suggestedResponse || MESSAGES[lang].risk_check);
+                return;
+            }
             session.data.risk_info = messageBody;
             await saveLead(session);
             await sendResponse(phoneNumber, 'CLOSING', session, 'closing', messageBody);

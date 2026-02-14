@@ -170,7 +170,53 @@ Write the NEXT message to the user.
     }
 };
 
+const validateInput = async (userInput, step, language = 'he') => {
+    if (!model) return { isValid: true }; // Fail open if no AI
+
+    const prompt = `
+    Task: Validate User Input for a Chatbot Flow.
+    Context: The bot is currently at step: "${step}".
+    User Input: "${userInput}"
+    Language: "${language}"
+
+    Definition of Valid:
+    - GET_NAME: Input must be a name or a nickname. (Invalid: "Banana", "No", "Why?").
+    - DATA_COLLECTION_CITY: Input must be a city/place name.
+    - DATA_COLLECTION_PURPOSE: Input must be a reason for a loan.
+    - PROPERTY_DETAILS: Input must be details about a property.
+    - GENERAL: If the user asks a relevant question or raises an objection found in the "Objection Matrix", it is INVALID for *progressing*, but valid for *handling*. Return isValid: false and the objection response.
+    - NONSENSE: If input is gibberish, jokes, or completely unrelated (e.g., "I like turtles"), it is INVALID.
+
+    Output JSON matches this schema:
+    {
+        "isValid": boolean, // true if we can proceed to next step. false if we should stay and ask again.
+        "reason": string, // Internal reason
+        "suggestedResponse": string // IF isValid is false, write a response in the correct language/tone to handle the issue and re-ask the question.
+    }
+    
+    Example 1 (Step: GET_NAME, Input: "David"): { "isValid": true, "reason": "Valid name", "suggestedResponse": null }
+    Example 2 (Step: GET_NAME, Input: "Why do you need it?"): { "isValid": false, "reason": "Objection", "suggestedResponse": "Names help us be personal. It's just for our records." }
+    Example 3 (Step: GET_NAME, Input: "Pizza"): { "isValid": false, "reason": "Nonsense", "suggestedResponse": "Haha, I like pizza too, but I need your name to continue." }
+    `;
+
+    try {
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        const json = parseAiJson(text);
+
+        // Log validation for debugging
+        console.log(`[Validation] Step: ${step}, Input: "${userInput}", Valid: ${json?.isValid}`);
+
+        return json || { isValid: true }; // Fallback to true if parse fails
+    } catch (error) {
+        console.error("Validation Error:", error);
+        return { isValid: true }; // Fallback to true on error to not block user
+    }
+};
+
 module.exports = {
     analyzeInput,
-    generateResponse
+    generateResponse,
+    validateInput
 };
