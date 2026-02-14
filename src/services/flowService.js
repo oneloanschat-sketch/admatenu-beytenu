@@ -8,6 +8,7 @@ const { detectLanguage } = require('../utils/language');
 const MESSAGES = {
     he: {
         greeting: "שלום, ברוכים הבאים לאדמתנו ביתנו. מה שלומך?",
+        get_name: "נעים מאוד! כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?",
         listening: "אני מבין, אנו עוזרים למשפחות במצבים דומים מדי יום. איך נוכל לעזור?",
         qualification_amount: "מהו סכום ההלוואה המבוקש? (בשקלים)",
         rejection: "אנו מתנצלים, אך סכום המינימום לטיפול הוא 200,000 ₪. נשמח לעמוד לשירותכם בעתיד.",
@@ -21,7 +22,8 @@ const MESSAGES = {
         unknown: "לא הבנתי, אפשר לנסח שוב?"
     },
     ar: {
-        greeting: "מرحبا، أهلاً بكم في 'أرضنا بيتنا'. كيف حالك؟",
+        greeting: "مرحبا، أهلاً بكم في 'أرضنا بيتنا'. كيف حالك؟",
+        get_name: "تشرفنا! لكي نتمكن من التقدم، هل يمكنني معرفة اسمك الكامل؟",
         listening: "أنا أفهم، نحن نساعد العائلات في حالات مماثلة كل يوم. كيف يمكننا المساعدة؟",
         qualification_amount: "ما هو مبلغ القرض المطلوب؟ (بالشيكل)",
         rejection: "نعتذر، ولكن الحد الأدنى للتعامل هو 200,000 شيكل. نأمل أن نخدمكم في المستقبل.",
@@ -36,6 +38,7 @@ const MESSAGES = {
     },
     ru: {
         greeting: "Здравствуйте, добро пожаловать в 'Адматену Бейтену'. Как вы?",
+        get_name: "Очень приятно! Чтобы мы могли продолжить, как вас зовут (полное имя)?",
         listening: "Я понимаю, мы помогаем семьям в подобных ситуациях каждый день. Чем мы можем помочь?",
         qualification_amount: "Какова требуемая сумма кредита? (в шекелях)",
         rejection: "Приносим извинения, но минимальная сумма для обработки составляет 200 000 шекелей.",
@@ -220,7 +223,7 @@ const processMessage = async (phoneNumber, messageBody) => {
     switch (step) {
         case STEPS.GREETING:
             // User responded to "How are you?"
-            await sendResponse(phoneNumber, 'GET_NAME', session, 'listening', messageBody);
+            await sendResponse(phoneNumber, 'GET_NAME', session, 'get_name', messageBody);
             await updateSession(phoneNumber, STEPS.GET_NAME, session.data);
             break;
 

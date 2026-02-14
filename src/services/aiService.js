@@ -82,6 +82,22 @@ Rules:
 const generateResponse = async (step, userInput, context = {}, language = 'he') => {
     if (!model) return null;
 
+    // Map Steps to Explicit Instructions
+    const stepDirectives = {
+        'GREETING': 'Welcome the user and ask "How are you?". Use the exact full greeting provided in instructions.',
+        'GET_NAME': 'Ask for the client\'s full name politey.',
+        'LISTENING': 'Acknowledge their response warmly and ask "How can we help you today?".',
+        'QUALIFICATION': 'Ask for the requested loan amount (in NIS).',
+        'DATA_COLLECTION_CITY': 'Ask which town/city they live in.',
+        'DATA_COLLECTION_PURPOSE': 'Ask what the money is for (renovation, debt covering, etc.).',
+        'PROPERTY_OWNERSHIP': 'Ask if they own a property.',
+        'PROPERTY_DETAILS': 'Ask for property details: Who owns it, Tabu/Minhal status, and Building Permit status.',
+        'RISK_CHECK': 'Ask about bank history (BDI) in the last 3 years (checks returned, foreclosures, etc.).',
+        'CLOSING': 'Thank them, mention an expert will analyze the data, and ask "When is convenient for us to call?" and wish "Lovely day".'
+    };
+
+    const currentDirective = stepDirectives[step] || 'Respond naturally and helpfuly.';
+
     const persona = `
 System Prompt: Admatenu Betenu - Financial AI Agent No. 1
 1. Identity & Tone
@@ -130,6 +146,7 @@ System Prompt: Admatenu Betenu - Financial AI Agent No. 1
 - Language: ${language}
 
 Current Interaction Step: ${step}
+Directives for this Step: "${currentDirective}"
 User Input: "${userInput}"
 
 Task:
@@ -145,7 +162,7 @@ Write the NEXT message to the user.
         const result = await model.generateContent(persona);
         const response = await result.response;
         const text = response.text().trim();
-        console.log(`[AI Generation] Step: ${step}, Input: "${userInput}" -> Output: "${text}"`);
+        console.log(`[AI Generation]Step: ${step}, Input: "${userInput}" -> Output: "${text}"`);
         return text;
     } catch (error) {
         console.error("AI Generation Error details:", error);
