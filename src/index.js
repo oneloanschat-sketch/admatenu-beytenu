@@ -10,6 +10,9 @@ app.get('/', (req, res) => {
     res.send('Admatenu Betenu Chatbot is running!');
 });
 
+const webhookController = require('./controllers/webhookController');
+app.post('/webhook', webhookController.handleWebhook);
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
