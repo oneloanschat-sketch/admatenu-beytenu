@@ -2,8 +2,12 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // Model priority list (Prioritizing Higher RPM limits)
 // Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
+// Model priority list (Flash Lite Models Only)
+// User requested: "All models that are Gemini Flash Lite" from project gen-lang-client-0766802505
 const MODEL_NAMES = [
-    "gemini-2.0-flash-lite-preview-02-05", // New Lite model (High RPM)
+    "gemini-2.5-flash-lite", // Latest Lite (Verified Working)
+    "gemini-2.0-flash-lite-preview-02-05", // Backup Lite
+    "gemini-flash-lite-latest" // Generic Lite
 ];
 
 let models = [];
@@ -27,31 +31,42 @@ if (process.env.GEMINI_API_KEY) {
 }
 
 // Helper: safe generation with fallback
-const generateWithFallback = async (prompt) => {
-    let lastError = null;
-    for (let i = 0; i < models.length; i++) {
-        const modelObj = models[i];
-        try {
-            const result = await modelObj.instance.generateContent(prompt);
-            const response = await result.response;
-            return response.text();
-        } catch (error) {
-            const isRateLimit = error.message.includes("429") || error.message.includes("Too Many Requests") || error.message.includes("QuotaExceeded");
-            // If it's a 404 (Not Found) or 429 (Rate Limit) or 503 (Service Unavailable), we try next.
-            // If it's a 400 (Bad Request), it's our fault, but sometimes 400 comes safely.
+// Helper: Infinite Retry Loop (Wait until available)
+const generateWithRetryLoop = async (prompt) => {
+    let attempt = 0;
+    let delay = 2000; // Start with 2 seconds
 
-            console.warn(`⚠️ Model ${modelObj.name} failed. Error: ${error.message.substring(0, 100)}... Switching to next...`);
-            lastError = error;
-            continue; // Try next model
+    while (true) {
+        attempt++;
+        for (const modelObj of models) {
+            try {
+                // console.log(`Attempt ${attempt}: Trying ${modelObj.name}...`);
+                const result = await modelObj.instance.generateContent(prompt);
+                const response = await result.response;
+                return response.text();
+            } catch (error) {
+                const isRateLimit = error.message.includes("429") || error.message.includes("Too Many Requests") || error.message.includes("QuotaExceeded") || error.message.includes("503");
+                console.warn(`⚠️ Model ${modelObj.name} failed (Attempt ${attempt}). Error: ${error.message.substring(0, 100)}...`);
+
+                if (error.message.includes("400") && !error.message.includes("Precondition")) {
+                    // Log but continue if user insists on "Wait until available"
+                }
+            }
         }
+
+        // If all models failed this turn, wait and retry.
+        console.log(`⏳ AI Unavailable. Waiting ${delay}ms before next attempt...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+
+        // Exponential Backoff with cap
+        delay = Math.min(delay * 1.5, 60000); // Verify cap at 60s
     }
-    throw lastError || new Error("All AI models failed.");
 };
 
 // Replaces the direct model usage. We export a 'model' object that mimics the SDK's interface.
 const model = {
     generateContent: async (prompt) => {
-        const text = await generateWithFallback(prompt);
+        const text = await generateWithRetryLoop(prompt);
         return {
             response: {
                 text: () => text
