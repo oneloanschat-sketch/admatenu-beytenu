@@ -4,11 +4,12 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
 // Model priority list (Flash Lite Models Only)
 // Verified available models from API list (2026-02-15)
-// Verified available models from API list (2026-02-15)
+// Verified available models from API list (2026-02-15) - User requested PRO
 const MODEL_NAMES = [
-    "gemini-2.5-flash-lite",        // Priority 1: Lite (RPM: 10) - Higher limit, faster response.
-    "gemini-2.5-flash",             // Priority 2: Standard (RPM: 5) - High performance backup.
-    "gemini-2.5-flash-lite-preview-02-05", // Priority 3: Preview Lite
+    "gemini-2.5-pro",               // Priority 1: User Requested (High capability)
+    "gemini-2.5-flash",             // Priority 2: Standard (RPM: 5) - High performance
+    "gemini-2.5-flash-lite",        // Priority 3: Lite (RPM: 10) - Backup
+    "gemini-2.5-flash-lite-preview-02-05", // Priority 4: Preview Lite
 ];
 
 let models = [];
