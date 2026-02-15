@@ -27,16 +27,22 @@ const generateWithRetryLoop = async (messages, jsonMode = false) => {
     while (true) {
         attempt++;
         try {
-            const completion = await groq.chat.completions.create({
+            const params = {
                 messages: messages,
                 model: MODEL,
                 temperature: 0.7,
                 max_tokens: 1024,
-                response_format: jsonMode ? { type: "json_object" } : { type: "text" }
-            });
+            };
+
+            // Only add response_format if jsonMode is true
+            if (jsonMode) {
+                params.response_format = { type: "json_object" };
+            }
+
+            const completion = await groq.chat.completions.create(params);
             return completion.choices[0]?.message?.content || "";
         } catch (error) {
-            console.warn(`⚠️ Groq Error (Attempt ${attempt}): ${error.message}`);
+            console.warn(`⚠️ Groq Error (Attempt ${attempt}):`, JSON.stringify(error, null, 2));
 
             // If it's a 400 error (Bad Request), it might be context length or invalid structure. Don't retry infinitely.
             if (error.status === 400) {
