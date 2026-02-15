@@ -4,8 +4,6 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
 const MODEL_NAMES = [
     "gemini-2.0-flash-lite-preview-02-05", // New Lite model (High RPM)
-    "gemini-2.0-flash", // Limit: 15 RPM
-    "gemini-2.5-flash"  // Limit: 5 RPM
 ];
 
 let models = [];
