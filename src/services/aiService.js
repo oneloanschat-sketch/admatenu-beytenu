@@ -3,11 +3,14 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Model priority list (Prioritizing Higher RPM limits)
 // Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
 // Model priority list (Flash Lite Models Only)
+// Verified available models from API list (2026-02-15)
 const MODEL_NAMES = [
-    "gemini-1.5-flash",      // Priority 1: High Quota (15 RPM), Stable
-    "gemini-2.5-flash-lite", // Priority 2: Fast (10 RPM)
-    "gemini-pro",            // Priority 3: Legacy High Quota (60 RPM)
-    "gemini-2.0-flash"       // Priority 4: Backup
+    "gemini-2.5-flash",             // Standard (RPM: 5) - High performance
+    "gemini-2.5-flash-lite-preview-02-05", // Lite (RPM: 10) - Higher rate limit? (Need to verify if exists, user list truncated)
+    // Fallback to standard flash if lite is missing in list, but user metrics showed lite usage.
+    // Based on `list_true_models` output, we only saw `gemini-2.5-flash`. 
+    // SAFEST BET: Use the one we saw + the lite one user metrics showed usage for.
+    "gemini-2.5-flash-lite",
 ];
 
 let models = [];
