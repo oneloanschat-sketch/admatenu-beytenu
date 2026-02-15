@@ -1,6 +1,8 @@
 const Groq = require('groq-sdk');
 require('dotenv').config();
 
+const MODEL = "llama-3.3-70b-versatile";
+
 let groq;
 try {
     if (process.env.GROQ_API_KEY) {
@@ -42,8 +44,9 @@ const generateWithRetryLoop = async (messages, jsonMode = false) => {
             const completion = await groq.chat.completions.create(params);
             return completion.choices[0]?.message?.content || "";
         } catch (error) {
-            console.warn(`⚠️ Groq Error (Attempt ${attempt}):`, JSON.stringify(error, null, 2));
-            console.warn("Request Params:", JSON.stringify(params, null, 2)); // Log params to debug 400
+            console.warn(`⚠️ Groq Error (Attempt ${attempt}): ${error.message}`);
+            if (error.response) console.warn("API Response Details:", JSON.stringify(error.response.data, null, 2));
+            console.warn("Request Params:", JSON.stringify(params, null, 2));
 
             // If it's a 400 error (Bad Request), it might be context length or invalid structure. Don't retry infinitely.
             if (error.status === 400) {
