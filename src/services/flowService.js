@@ -214,15 +214,13 @@ const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) 
     const lang = session.data.language || 'he';
     const context = session.data;
 
-    // Generate AI response
+    // Generate AI response (Will retry forever until success)
     const aiText = await aiService.generateResponse(step, userInput, context, lang);
 
     if (aiText) {
         await whatsappService.sendMessage(phoneNumber, aiText);
-    } else {
-        // Fallback to static message
-        await whatsappService.sendMessage(phoneNumber, MESSAGES[lang][fallbackKey]);
     }
+    // No else: If aiText is null (impossible with retry loop unless crashed), we send nothing.
 };
 
 const RESET_KEYWORDS = ['hi', 'hello', 'שלום', 'היי', 'אהלן', 'start', 'reset', 'restart'];
