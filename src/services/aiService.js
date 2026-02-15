@@ -5,17 +5,16 @@ let groq;
 try {
     if (process.env.GROQ_API_KEY) {
         groq = new Groq({
-            apiKey: process.env.GROQ_API_KEY
+            apiKey: process.env.GROQ_API_KEY,
+            timeout: 20000 // 20s timeout to prevent hanging
         });
-        console.log("Groq AI Initialized with model: llama3-70b-8192");
+        console.log("Groq AI Initialized with model:", MODEL);
     } else {
         console.warn("GROQ_API_KEY not found. AI features disabled.");
     }
 } catch (e) {
     console.error("Failed to initialize Groq:", e);
 }
-
-const MODEL = "llama3-70b-8192";
 
 // Helper: Infinite Retry Loop (Wait until available)
 const generateWithRetryLoop = async (messages, jsonMode = false) => {
@@ -26,8 +25,9 @@ const generateWithRetryLoop = async (messages, jsonMode = false) => {
 
     while (true) {
         attempt++;
+        let params = {};
         try {
-            const params = {
+            params = {
                 messages: messages,
                 model: MODEL,
                 temperature: 0.7,
@@ -43,6 +43,7 @@ const generateWithRetryLoop = async (messages, jsonMode = false) => {
             return completion.choices[0]?.message?.content || "";
         } catch (error) {
             console.warn(`⚠️ Groq Error (Attempt ${attempt}):`, JSON.stringify(error, null, 2));
+            console.warn("Request Params:", JSON.stringify(params, null, 2)); // Log params to debug 400
 
             // If it's a 400 error (Bad Request), it might be context length or invalid structure. Don't retry infinitely.
             if (error.status === 400) {
