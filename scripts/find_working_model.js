@@ -1,55 +1,32 @@
-require('dotenv').config();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+require('dotenv').config();
 
-async function findWorkingModel() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        console.error("❌ GEMINI_API_KEY is missing");
-        return;
-    }
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-    const startModels = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash-lite-001",
-        "gemini-flash-latest",
-        "gemini-1.5-flash"
+async function findAnyWorkingModel() {
+    console.log("Searching for ANY working model for key ending in...", process.env.GEMINI_API_KEY.slice(-4));
+
+    // List of broader candidates including older stable ones
+    const candidates = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest",
+        "gemini-1.0-pro",
+        "gemini-pro",
+        "gemini-1.5-pro-latest"
     ];
 
-    console.log(`🔍 Testing ${startModels.length} models to find a working one...`);
-    const genAI = new GoogleGenerativeAI(apiKey);
-
-    for (const modelName of startModels) {
+    for (const modelName of candidates) {
         process.stdout.write(`Testing ${modelName}... `);
         try {
             const model = genAI.getGenerativeModel({ model: modelName });
-
-            // Set a timeout to avoid hanging
-            const resultPromise = model.generateContent("Hello");
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 10000));
-
-            const result = await Promise.race([resultPromise, timeoutPromise]);
-            const response = await result.response;
-            const text = response.text();
-
-            if (text) {
-                console.log(`✅ SUCCESS!`);
-                console.log(`🎉 Found working model: ${modelName}`);
-                console.log(`Response: ${text.trim()}`);
-
-                // Write to file so we can read it from other tools if needed
-                const fs = require('fs');
-                fs.writeFileSync('working_model.txt', modelName);
-                return;
-            }
-        } catch (error) {
-            let errMsg = error.message;
-            if (errMsg.includes('404')) errMsg = '404 Not Found';
-            if (errMsg.includes('429')) errMsg = '429 Quota Exceeded';
-            console.log(`❌ Failed (${errMsg})`);
+            // Simple generation to prove access
+            const result = await model.generateContent("Hi");
+            console.log(`✅ WORKS!`);
+            // If we find one, we might stop, but let's see which ones work.
+        } catch (e) {
+            console.log(`❌ Fail: ${e.message.split(' ')[0]}`);
         }
     }
-
-    console.log("❌ All models failed.");
 }
 
-findWorkingModel();
+findAnyWorkingModel();
