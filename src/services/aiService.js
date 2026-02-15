@@ -4,13 +4,11 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 // Based on tests: gemini-2.0-flash exists (hit rate limit), gemini-2.5-flash works.
 // Model priority list (Flash Lite Models Only)
 // Verified available models from API list (2026-02-15)
+// Verified available models from API list (2026-02-15)
 const MODEL_NAMES = [
-    "gemini-2.5-flash",             // Standard (RPM: 5) - High performance
-    "gemini-2.5-flash-lite-preview-02-05", // Lite (RPM: 10) - Higher rate limit? (Need to verify if exists, user list truncated)
-    // Fallback to standard flash if lite is missing in list, but user metrics showed lite usage.
-    // Based on `list_true_models` output, we only saw `gemini-2.5-flash`. 
-    // SAFEST BET: Use the one we saw + the lite one user metrics showed usage for.
-    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash-lite",        // Priority 1: Lite (RPM: 10) - Higher limit, faster response.
+    "gemini-2.5-flash",             // Priority 2: Standard (RPM: 5) - High performance backup.
+    "gemini-2.5-flash-lite-preview-02-05", // Priority 3: Preview Lite
 ];
 
 let models = [];
@@ -33,11 +31,10 @@ if (process.env.GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY not found. AI features disabled.");
 }
 
-// Helper: safe generation with fallback
 // Helper: Infinite Retry Loop (Wait until available)
 const generateWithRetryLoop = async (prompt) => {
     let attempt = 0;
-    let delay = 2000; // Start with 2 seconds
+    let delay = 1000; // Start with 1 second (faster retry)
 
     while (true) {
         attempt++;
@@ -49,7 +46,10 @@ const generateWithRetryLoop = async (prompt) => {
                 return response.text();
             } catch (error) {
                 const isRateLimit = error.message.includes("429") || error.message.includes("Too Many Requests") || error.message.includes("QuotaExceeded") || error.message.includes("503");
-                console.warn(`⚠️ Model ${modelObj.name} failed (Attempt ${attempt}). Error: ${error.message.substring(0, 100)}...`);
+
+                if (attempt % 5 === 0) { // Log only every 5th attempt to reduce noise
+                    console.warn(`⚠️ Model ${modelObj.name} failed (Attempt ${attempt}). Error: ${error.message.substring(0, 100)}...`);
+                }
 
                 if (error.message.includes("400") && !error.message.includes("Precondition")) {
                     // Log but continue if user insists on "Wait until available"
@@ -62,7 +62,7 @@ const generateWithRetryLoop = async (prompt) => {
         await new Promise(resolve => setTimeout(resolve, delay));
 
         // Exponential Backoff with cap
-        delay = Math.min(delay * 1.5, 60000); // Verify cap at 60s
+        delay = Math.min(delay * 1.5, 10000); // Cap at 10s (was 60s) to retry faster
     }
 };
 
