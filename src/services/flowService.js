@@ -368,8 +368,16 @@ const processMessage = async (phoneNumber, messageBody) => {
             }
             session.data.has_property = hasProperty ? 'yes' : 'no';
 
-            await whatsappService.sendMessage(phoneNumber, procProp.response); // Asks details
-            await updateSession(phoneNumber, STEPS.PROPERTY_DETAILS, session.data);
+            if (hasProperty) {
+                await whatsappService.sendMessage(phoneNumber, procProp.response); // Asks permission
+                await updateSession(phoneNumber, STEPS.PROPERTY_DETAILS, session.data);
+            } else {
+                // Skip details, go straight to Risk
+                // AI ProcessStep might have generated a response asking for permit, but we override if No.
+                // We send the Risk Check question manually to ensure flow continuity.
+                await whatsappService.sendMessage(phoneNumber, MESSAGES[lang].risk_check);
+                await updateSession(phoneNumber, STEPS.RISK_CHECK, session.data);
+            }
             break;
 
         case STEPS.PROPERTY_DETAILS:
@@ -390,8 +398,23 @@ const processMessage = async (phoneNumber, messageBody) => {
                 return;
             }
             session.data.risk_info = messageBody;
-            await saveLead(session);
-            await whatsappService.sendMessage(phoneNumber, procRisk.response); // Closing
+            await whatsappService.sendMessage(phoneNumber, procRisk.response); // Asks "Anything Else?"
+            await updateSession(phoneNumber, STEPS.ANYTHING_ELSE, session.data);
+            break;
+
+        case STEPS.ANYTHING_ELSE:
+            const procAny = await aiService.processStep('ANYTHING_ELSE', messageBody, session.data, lang);
+            // Always valid really, unless nonsense.
+            if (!procAny.isValid) {
+                await whatsappService.sendMessage(phoneNumber, procAny.response);
+                return;
+            }
+            if (procAny.data && procAny.data.notes) {
+                session.data.risk_info += `\n[Notes]: ${procAny.data.notes}`;
+            }
+
+            await saveLead(session); // Save NOW
+            await whatsappService.sendMessage(phoneNumber, procAny.response); // Closing message
             await updateSession(phoneNumber, 'COMPLETED', session.data);
             break;
 
