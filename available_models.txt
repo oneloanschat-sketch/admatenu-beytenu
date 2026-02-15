@@ -1,0 +1,105 @@
+--- AVAILABLE MODELS ---
+Name: gemini-2.5-flash
+   Disp: Gemini 2.5 Flash
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-pro
+   Disp: Gemini 2.5 Pro
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.0-flash
+   Disp: Gemini 2.0 Flash
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.0-flash-001
+   Disp: Gemini 2.0 Flash 001
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.0-flash-exp-image-generation
+   Disp: Gemini 2.0 Flash (Image Generation) Experimental
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.0-flash-lite-001
+   Disp: Gemini 2.0 Flash-Lite 001
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.0-flash-lite
+   Disp: Gemini 2.0 Flash-Lite
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-exp-1206
+   Disp: Gemini Experimental 1206
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-flash-preview-tts
+   Disp: Gemini 2.5 Flash Preview TTS
+   Limit: 8192 tags
+-------------------------
+Name: gemini-2.5-pro-preview-tts
+   Disp: Gemini 2.5 Pro Preview TTS
+   Limit: 8192 tags
+-------------------------
+Name: gemini-flash-latest
+   Disp: Gemini Flash Latest
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-flash-lite-latest
+   Disp: Gemini Flash-Lite Latest
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-pro-latest
+   Disp: Gemini Pro Latest
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-flash-lite
+   Disp: Gemini 2.5 Flash-Lite
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-flash-image
+   Disp: Nano Banana
+   Limit: 32768 tags
+-------------------------
+Name: gemini-2.5-flash-preview-09-2025
+   Disp: Gemini 2.5 Flash Preview Sep 2025
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-flash-lite-preview-09-2025
+   Disp: Gemini 2.5 Flash-Lite Preview Sep 2025
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-3-pro-preview
+   Disp: Gemini 3 Pro Preview
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-3-flash-preview
+   Disp: Gemini 3 Flash Preview
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-3-pro-image-preview
+   Disp: Nano Banana Pro
+   Limit: 131072 tags
+-------------------------
+Name: gemini-robotics-er-1.5-preview
+   Disp: Gemini Robotics-ER 1.5 Preview
+   Limit: 1048576 tags
+-------------------------
+Name: gemini-2.5-computer-use-preview-10-2025
+   Disp: Gemini 2.5 Computer Use Preview 10-2025
+   Limit: 131072 tags
+-------------------------
+Name: gemini-embedding-001
+   Disp: Gemini Embedding 001
+   Limit: 2048 tags
+-------------------------
+Name: gemini-2.5-flash-native-audio-latest
+   Disp: Gemini 2.5 Flash Native Audio Latest
+   Limit: 131072 tags
+-------------------------
+Name: gemini-2.5-flash-native-audio-preview-09-2025
+   Disp: Gemini 2.5 Flash Native Audio Preview 09-2025
+   Limit: 131072 tags
+-------------------------
+Name: gemini-2.5-flash-native-audio-preview-12-2025
+   Disp: Gemini 2.5 Flash Native Audio Preview 12-2025
+   Limit: 131072 tags
+-------------------------
