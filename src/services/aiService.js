@@ -203,8 +203,40 @@ Examples:
     return json || { isValid: true };
 };
 
+const processStep = async (step, userInput, context = {}, language = 'he') => {
+    // 1. Validate Input (if needed)
+    // Some steps like GREETING don't need validation of user input (it's the first run)
+    // But for GET_NAME, etc., we validate.
+
+    if (step !== 'GREETING' && step !== 'CLOSING') {
+        const validation = await validateInput(userInput, step, language);
+        if (validation && !validation.isValid) {
+            return {
+                isValid: false,
+                response: validation.suggestedResponse || "Something went wrong, please try again."
+            };
+        }
+    }
+
+    // 2. Analyze Input (Extract data)
+    // We can do this here or let flowService do it. 
+    // FlowService seems to assume processStep handles it or it does it manually?
+    // In flowService line 292: session.data.full_name = messageBody; -> It takes raw body.
+    // So we just need to generate the NEXT response.
+
+    // 3. Generate Next Response
+    const nextResponse = await generateResponse(step, userInput, context, language);
+
+    return {
+        isValid: true,
+        response: nextResponse,
+        data: {} // In future we can modify this to return extracted data
+    };
+};
+
 module.exports = {
     analyzeInput,
     generateResponse,
-    validateInput
+    validateInput,
+    processStep
 };
