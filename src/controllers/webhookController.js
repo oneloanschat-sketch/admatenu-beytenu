@@ -23,15 +23,20 @@ exports.handleWebhook = async (req, res) => {
 
             console.log(`Processing message from ${phoneNumber}: ${messageBody}`);
 
-            // Process the message through the flow service
-            await flowService.processMessage(phoneNumber, messageBody);
+            // Process the message through the flow service asynchronously (Fire & Forget)
+            // This prevents the webhook from timing out if AI takes long or retries loops.
+            flowService.processMessage(phoneNumber, messageBody).catch(err => {
+                console.error(`Async processing error for ${phoneNumber}:`, err);
+            });
+
+            // IMMEDIATE SUCCESS RESPONSE to UltraMsg
+            return res.status(200).send('Webhook received and processing started');
         } else {
             console.warn('Webhook received but missing data.from or data.body');
+            return res.status(200).send('Missing data');
         }
-
-        res.status(200).send('Webhook received');
     } catch (error) {
         console.error('Error handling webhook:', error);
-        res.status(500).send('Internal Server Error');
+        return res.status(500).send('Internal Server Error');
     }
 };
