@@ -204,7 +204,7 @@ Return JSON: { "isValid": boolean, "reason": string, "suggestedResponse": string
 
 Rules:
 - General: Accept almost any relevant input.
-- GET_NAME: Accept names. Also accept emotional responses (e.g., "Good", "Bad") as VALID (assume name will be asked again in text).
+- GET_NAME: Accept names (Hebrew or English). Reject gibberish or unrelated numbers.
 - Fail only on complete gibberish.
 
 Context: Step "${step}".
