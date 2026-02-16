@@ -126,7 +126,15 @@ const parseAiJson = (text) => {
  * Unified Processor: Validates, Extracts, and Responds in ONE call.
  */
 const processStep = async (step, userInput, context = {}, language = 'he', history = []) => {
-    if (!groq) return { isValid: true, response: "AI Unavailable", data: {} };
+    // Fail gracefully if AI is not initialized
+    if (!groq) {
+        console.error("❌ Groq AI Invalid/Missing API Key");
+        return {
+            isValid: false,
+            response: language === 'he' ? "אירעה תקלה זמנית בחיבור למוח המערכת. אנא נסה שוב מאוחר יותר." : "System Error: AI Unavailable.",
+            data: {}
+        };
+    }
 
     // Construct the Prompt
     const currentDirective = STEP_DIRECTIVES[step] || 'Respond naturally.';
