@@ -105,10 +105,20 @@ Return JSON: { "has_property": boolean | null }`;
     return parseAiJson(text);
 };
 
-const generateResponse = async (step, userInput, context = {}, language = 'he') => {
+
+const generateResponse = async (step, userInput, context = {}, language = 'he', history = []) => {
     if (!groq) return null;
 
-    // Map Steps to Explicit Instructions
+    // ... (Directives map remains the same, omitted for brevity if I could, but I must replace the whole block or function start)
+    // Actually I can just replace the function signature and the messages construction part.
+    // But replace_file_content works on chunks.
+
+    // Let's replace the signature and the messages creation.
+    // I need to be careful with strict matching.
+
+    // I will use a larger chunk to be safe.
+
+    // ... [Previous directives code] ...
     const stepDirectives = {
         'GREETING': 'Welcome the user and ask "How are you?". Use the exact full greeting provided in instructions.',
         'GET_NAME': 'Ask for the client\'s full name politey.',
@@ -173,8 +183,15 @@ Constraints:
 - NO JSON. Just the text message.
     `;
 
+    // Map history to Groq format
+    const historyMessages = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content
+    }));
+
     const messages = [
         { role: "system", content: systemPrompt },
+        ...historyMessages,
         { role: "user", content: userInput }
     ];
 
@@ -213,7 +230,7 @@ Examples:
     return json || { isValid: true };
 };
 
-const processStep = async (step, userInput, context = {}, language = 'he') => {
+const processStep = async (step, userInput, context = {}, language = 'he', history = []) => {
     // 1. Validate Input (if needed)
     // Some steps like GREETING don't need validation of user input (it's the first run)
     // But for GET_NAME, etc., we validate.
@@ -235,7 +252,7 @@ const processStep = async (step, userInput, context = {}, language = 'he') => {
     // So we just need to generate the NEXT response.
 
     // 3. Generate Next Response
-    const nextResponse = await generateResponse(step, userInput, context, language);
+    const nextResponse = await generateResponse(step, userInput, context, language, history);
 
     return {
         isValid: true,
