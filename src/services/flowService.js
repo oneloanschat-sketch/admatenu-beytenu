@@ -145,10 +145,17 @@ const updateSession = async (phoneNumber, step, sessionData) => {
     // 2. Try DB
     if (supabase) {
         try {
-            await supabase
+            const { error, count } = await supabase
                 .from('sessions')
                 .update({ step, data: sessionData, last_active: new Date() })
-                .eq('phone_number', phoneNumber);
+                .eq('phone_number', phoneNumber)
+                .select('id', { count: 'exact' });
+
+            if (error) {
+                console.error('DB Update Error:', error.message);
+            } else {
+                console.log(`[DB] Updated session for ${phoneNumber}: Step=${step}, Count=${count}`);
+            }
         } catch (dbError) {
             console.error('DB Update Error (Local updated only):', dbError.message);
         }

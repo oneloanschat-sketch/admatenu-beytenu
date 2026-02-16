@@ -188,13 +188,18 @@ const validateInput = async (userInput, step, language = 'he') => {
 
     const systemPrompt = `
 Task: Validate User Input for Chatbot.
+CRITICAL: The "suggestedResponse" MUST BE IN HEBREW (עברית).
+
 Return JSON: { "isValid": boolean, "reason": string, "suggestedResponse": string (optional) }
 
 Context: Step "${step}".
+Rules:
+- GET_NAME: Allow first names like "יוני" or full names. Reject nonsense.
+- General: If invalid, provide a polite Hebrew suggested response explaining why.
+
 Examples:
-- GET_NAME + "David" -> true
-- GET_NAME + "Pizza" -> false (Nonsense)
-- GET_NAME + "Why?" -> false (Objection)
+- Step: GET_NAME, Input: "Pizza" -> { "isValid": false, "suggestedResponse": "סליחה, לא הבנתי. תוכל בבקשה לכתוב את שמך המלא?" }
+- Step: GET_NAME, Input: "Yoni" -> { "isValid": true }
     `;
 
     const messages = [
