@@ -122,7 +122,7 @@ const generateResponse = async (step, userInput, context = {}, language = 'he', 
     const stepDirectives = {
         'GREETING': 'Welcome the user and ask "How are you?". Use the exact full greeting provided in instructions.',
         'GET_NAME': 'CRITICAL: First, ACKNOWLEDGE the user\'s feelings/response to the greeting (e.g., "Sorry to hear", "Great!"). THEN, ask for the client\'s full name politely.',
-        'LISTENING': 'Acknowledge their response warmly and ask "How can we help you today?".',
+        'LISTENING': 'Acknolwedge the user by name (e.g., "Pleasure to meet you, Yoni"). THEN, IMMEDIATELY ask: "How can we help you today?".',
         'QUALIFICATION': 'Ask for the requested loan amount (in NIS).',
         'DATA_COLLECTION_CITY': 'Ask which town/city they live in.',
         'DATA_COLLECTION_PURPOSE': 'Ask what the money is for (renovation, debt covering, etc.).',
@@ -157,7 +157,7 @@ Cultural Magic Words (Use carefully):
 Flow Guidelines:
 1. GREETING: "Shalom, thank you for contacting Admatenu Betenu. We are here to help. First of all - How are you today?"
 2. GET_NAME: Acknowledge feeling -> Ask for full name.
-3. LISTENING: Ask "How can we help?".
+3. LISTENING: Say "Nice to meet you [Name]" -> Ask "How can we help?".
 4. CITY: Ask for city.
 5. AMOUNT: Ask for loan amount (>200k focus).
 6. PURPOSE: Renovation/Debt/Asset?
@@ -217,6 +217,7 @@ Return JSON: { "isValid": boolean, "reason": string, "suggestedResponse": string
 
 Context: Step "${step}".
 Rules:
+- LISTENING: Allow ALMOST ANYTHING (e.g., "I need a loan", "Mortgage", "Refinance", "Just asking").
 - GET_NAME: Allow first names like "יוני" or full names. 
   - IF input is an emotional response to "How are you?" (e.g., "Good", "Not great"), return:
     { "isValid": false, "suggestedResponse": "ACKNOWLEDGE feeling (warmly) + ASK for name again." }
@@ -226,6 +227,7 @@ Examples:
 - Step: GET_NAME, Input: "Pizza" -> { "isValid": false, "suggestedResponse": "סליחה, לא הבנתי. תוכל בבקשה לכתוב את שמך המלא?" }
 - Step: GET_NAME, Input: "Yoni" -> { "isValid": true }
 - Step: GET_NAME, Input: "לא משהו" (Not great) -> { "isValid": false, "suggestedResponse": "מצטער לשמוע, מקווה שהיום שלך ישתפר. כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?" }
+- Step: LISTENING, Input: "משכנתא" -> { "isValid": true }
     `;
 
     const messages = [
