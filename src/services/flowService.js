@@ -247,7 +247,8 @@ const sendResponse = async (phoneNumber, step, session, fallbackKey, userInput) 
     const history = session.data.history || [];
 
     // Generate AI response (Will retry forever until success)
-    const aiText = await aiService.generateResponse(step, userInput, context, lang, history);
+    const result = await aiService.processStep(step, userInput, context, lang, history);
+    const aiText = result.response;
 
     if (aiText) {
         await whatsappService.sendMessage(phoneNumber, aiText);
