@@ -184,6 +184,12 @@ Constraints:
 - NO JSON. Just the text message.
     `;
 
+    // Map history to Groq format
+    const historyMessages = history.map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content
+    }));
+
     const messages = [
         { role: "system", content: systemPrompt },
         ...historyMessages
