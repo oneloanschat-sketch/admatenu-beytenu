@@ -217,12 +217,15 @@ Return JSON: { "isValid": boolean, "reason": string, "suggestedResponse": string
 
 Context: Step "${step}".
 Rules:
-- GET_NAME: Allow first names like "יוני" or full names. Reject nonsense.
-- General: If invalid, provide a polite Hebrew suggested response explaining why.
+- GET_NAME: Allow first names like "יוני" or full names. 
+  - IF input is an emotional response to "How are you?" (e.g., "Good", "Not great"), return:
+    { "isValid": false, "suggestedResponse": "ACKNOWLEDGE feeling (warmly) + ASK for name again." }
+  - Reject nonsense/gibberish.
 
 Examples:
 - Step: GET_NAME, Input: "Pizza" -> { "isValid": false, "suggestedResponse": "סליחה, לא הבנתי. תוכל בבקשה לכתוב את שמך המלא?" }
 - Step: GET_NAME, Input: "Yoni" -> { "isValid": true }
+- Step: GET_NAME, Input: "לא משהו" (Not great) -> { "isValid": false, "suggestedResponse": "מצטער לשמוע, מקווה שהיום שלך ישתפר. כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?" }
     `;
 
     const messages = [
