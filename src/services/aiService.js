@@ -121,16 +121,15 @@ const generateResponse = async (step, userInput, context = {}, language = 'he', 
     // ... [Previous directives code] ...
     const stepDirectives = {
         'GREETING': 'Welcome the user and ask "How are you?".',
-        'GET_NAME': 'Acknowledge the user\'s response, then ask for their full name.',
-        'LISTENING': 'Say "Nice to meet you [Name]", then ask "How can we help you today?".',
-        'QUALIFICATION': 'Ask for the requested loan amount (in NIS).',
+        'GET_NAME': 'Briefly acknowledge the response, then ask for their full name.',
+        'QUALIFICATION': 'Say "Nice to meet you [Name]", then ask for the requested loan amount (in NIS).',
         'DATA_COLLECTION_CITY': 'Ask which town/city they live in.',
         'DATA_COLLECTION_PURPOSE': 'Ask what the money is for.',
         'PROPERTY_OWNERSHIP': 'Ask if they own a property.',
         'PROPERTY_DETAILS': 'Ask for property details: Ownership, Tabu, and Permit status.',
         'RISK_CHECK': 'Ask about bank history (BDI) in the last 3 years.',
-        'CLOSING': 'Thank them, say an expert will contact them, and ask "When is convenient to call?".',
-        'ANYTHING_ELSE': 'Ask if there is anything else to add.'
+        'ANYTHING_ELSE': 'Ask "When is convenient for us to call you?"',
+        'CLOSING': 'Say: "Thank you! The details have been passed to a senior representative. Have a lovely day."'
     };
 
     const currentDirective = stepDirectives[step] || 'Respond naturally.';
