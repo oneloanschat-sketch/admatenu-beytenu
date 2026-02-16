@@ -226,9 +226,9 @@ const addToHistory = (session, role, content) => {
     if (!session.data.history) session.data.history = [];
     session.data.history.push({ role, content });
 
-    // Keep last 10 messages
-    if (session.data.history.length > 10) {
-        session.data.history = session.data.history.slice(-10);
+    // Keep last 30 messages
+    if (session.data.history.length > 30) {
+        session.data.history = session.data.history.slice(-30);
     }
 };
 
