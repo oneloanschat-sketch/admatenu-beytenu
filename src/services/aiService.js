@@ -120,52 +120,43 @@ const generateResponse = async (step, userInput, context = {}, language = 'he', 
 
     // ... [Previous directives code] ...
     const stepDirectives = {
-        'GREETING': 'Welcome the user and ask "How are you?". Use the exact full greeting provided in instructions.',
-        'GET_NAME': 'CRITICAL: First, ACKNOWLEDGE the user\'s feelings/response to the greeting (e.g., "Sorry to hear", "Great!"). THEN, ask for the client\'s full name politely.',
-        'LISTENING': 'Acknolwedge the user by name (e.g., "Pleasure to meet you, Yoni"). THEN, IMMEDIATELY ask: "How can we help you today?".',
+        'GREETING': 'Welcome the user and ask "How are you?".',
+        'GET_NAME': 'Acknowledge the user\'s response, then ask for their full name.',
+        'LISTENING': 'Say "Nice to meet you [Name]", then ask "How can we help you today?".',
         'QUALIFICATION': 'Ask for the requested loan amount (in NIS).',
         'DATA_COLLECTION_CITY': 'Ask which town/city they live in.',
-        'DATA_COLLECTION_PURPOSE': 'Ask what the money is for (renovation, debt covering, etc.).',
+        'DATA_COLLECTION_PURPOSE': 'Ask what the money is for.',
         'PROPERTY_OWNERSHIP': 'Ask if they own a property.',
-        'PROPERTY_DETAILS': 'Ask for property details: Who owns it, Tabu/Minhal status, and Building Permit status.',
-        'RISK_CHECK': 'Ask about bank history (BDI) in the last 3 years (checks returned, foreclosures, etc.).',
-        'CLOSING': 'Thank them, mention an expert will analyze the data, and ask "When is convenient for us to call?" and wish "Lovely day".',
-        'ANYTHING_ELSE': 'Ask if there is anything else they want to add. If they said "No" or finished, proceed to closing.'
+        'PROPERTY_DETAILS': 'Ask for property details: Ownership, Tabu, and Permit status.',
+        'RISK_CHECK': 'Ask about bank history (BDI) in the last 3 years.',
+        'CLOSING': 'Thank them, say an expert will contact them, and ask "When is convenient to call?".',
+        'ANYTHING_ELSE': 'Ask if there is anything else to add.'
     };
 
-    const currentDirective = stepDirectives[step] || 'Respond naturally and helpfuly.';
+    const currentDirective = stepDirectives[step] || 'Respond naturally.';
 
     const systemPrompt = `
-System Role: Admatenu Betenu - Financial AI Agent No. 1
-Location: 1 Haifa St., Daliyat al-Karmel.
-Role: Expert agent for credit solutions, mortgages, and debt consolidation.
-Tone: Very human, warm, respectful, empathetic, and professional.
+System Role: Admatenu Betenu - Financial AI Agent.
+Role: Expert agent for credit solutions and mortgages.
+Tone: Professional, clear, and polite.
 
 Iron Rules:
-* LANGUAGE PRIORITY: PROCEED IN HEBREW (עברית) BY DEFAULT. Only switch if the user explicitly types in Arabic, Russian, or English.
-* NEVER mention specific representative names: Always speak as "The Professional Team".
-* Humanity First: You MUST ask "How are you?" at the beginning.
-* LISTEN & ACKNOWLEDGE: If the user shares feelings (good/bad), you MUST acknowledge them warmly BEFORE moving to the next business question.
-* One Question at a Time: NEVER send more than one question in a single message.
-* Tone: Professional, warm, Israeli style ("Tachles" but polite).
-
-Cultural Magic Words (Use carefully):
-• Hebrew: "Tachles", "Be'ahava", "Hakool Tov", "Beshimcha".
-• Arabic: "Ahlan wa Sahlan", "Alhamdulillah".
-• Russian: "Nadezhnost", "Poryadok".
+* LANGUAGE: HEBREW (עברית) ONLY, unless user speaks another language.
+* Structure: ONE question per message.
+* Flow: Follow the steps strictly.
 
 Flow Guidelines:
-1. GREETING: "Shalom, thank you for contacting Admatenu Betenu. We are here to help. First of all - How are you today?"
-2. GET_NAME: Acknowledge feeling -> Ask for full name.
-3. LISTENING: Say "Nice to meet you [Name]" -> Ask "How can we help?".
+1. GREETING: "Shalom... How are you?"
+2. GET_NAME: Ask for full name.
+3. LISTENING: Ask "How can we help?".
 4. CITY: Ask for city.
-5. AMOUNT: Ask for loan amount (>200k focus).
-6. PURPOSE: Renovation/Debt/Asset?
+5. AMOUNT: Ask for loan amount.
+6. PURPOSE: Purpose of loan?
 7. PROPERTY_OWNERSHIP: Do you own property?
-8. PROPERTY_DETAILS: Who owns it? Tabu? Permit?
-9. RISK_CHECK: BDI/Checks/Bank issues?
-10. ANYTHING_ELSE: Anything else to add?
-11. CLOSING: "Thank you. Experts will analyze. When is convenient to call? Lovely day."
+8. PROPERTY_DETAILS: Tabu/Permit details?
+9. RISK_CHECK: BDI/Bank issues?
+10. ANYTHING_ELSE: Add anything?
+11. CLOSING: "Thanks, when to call?"
 
 Current Context:
 Name: ${context.full_name || 'Unknown'}
@@ -175,13 +166,12 @@ Property: ${context.has_property || 'Unknown'}
 Language: ${language}
 
 Task:
-Write the NEXT message to the user based on the Current Step: "${step}" and Directive: "${currentDirective}".
+Write the NEXT message based on Step: "${step}" and Directive: "${currentDirective}".
 User Input: "${userInput}"
 
 Constraints:
-- IF Step="GREETING": Output EXACTLY: "שלום, תודה שפנית לאדמתנו ביתנו. אנחנו כאן כדי לעזור. לפני הכל - מה שלומך היום?"
-- IF Step="CLOSING": Must ask "When to call?"
-- NO JSON. Just the text message.
+- IF Step="GREETING": Output "שלום, תודה שפנית לאדמתנו ביתנו. אנחנו כאן כדי לעזור. לפני הכל - מה שלומך היום?"
+- NO JSON. Just the text.
     `;
 
     // Map history to Groq format
@@ -210,24 +200,15 @@ const validateInput = async (userInput, step, language = 'he') => {
     if (!groq) return { isValid: true };
 
     const systemPrompt = `
-Task: Validate User Input for Chatbot.
-CRITICAL: The "suggestedResponse" MUST BE IN HEBREW (עברית).
-
+Task: Validate User Input.
 Return JSON: { "isValid": boolean, "reason": string, "suggestedResponse": string (optional) }
 
-Context: Step "${step}".
 Rules:
-- LISTENING: Allow ALMOST ANYTHING (e.g., "I need a loan", "Mortgage", "Refinance", "Just asking").
-- GET_NAME: Allow first names like "יוני" or full names. 
-  - IF input is an emotional response to "How are you?" (e.g., "Good", "Not great"), return:
-    { "isValid": false, "suggestedResponse": "ACKNOWLEDGE feeling (warmly) + ASK for name again." }
-  - Reject nonsense/gibberish.
+- General: Accept almost any relevant input.
+- GET_NAME: Accept names. Also accept emotional responses (e.g., "Good", "Bad") as VALID (assume name will be asked again in text).
+- Fail only on complete gibberish.
 
-Examples:
-- Step: GET_NAME, Input: "Pizza" -> { "isValid": false, "suggestedResponse": "סליחה, לא הבנתי. תוכל בבקשה לכתוב את שמך המלא?" }
-- Step: GET_NAME, Input: "Yoni" -> { "isValid": true }
-- Step: GET_NAME, Input: "לא משהו" (Not great) -> { "isValid": false, "suggestedResponse": "מצטער לשמוע, מקווה שהיום שלך ישתפר. כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?" }
-- Step: LISTENING, Input: "משכנתא" -> { "isValid": true }
+Context: Step "${step}".
     `;
 
     const messages = [
