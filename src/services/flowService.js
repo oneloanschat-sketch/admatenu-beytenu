@@ -5,68 +5,74 @@ const aiService = require('./aiService');
 const { detectLanguage } = require('../utils/language');
 
 // Dictionary for multilingual responses
+// Dictionary for multilingual responses
 const MESSAGES = {
     he: {
-        greeting: "שלום (v2.0), ברוכים הבאים לאדמתנו ביתנו. מה שלומך?",
-        get_name: "נעים מאוד! כדי שנוכל להתקדם, אשמח לדעת מה שמך המלא?",
-        listening: "אני מבין, אנו עוזרים למשפחות במצבים דומים מדי יום. איך נוכל לעזור?",
-        qualification_amount: "מהו סכום ההלוואה המבוקש? (בשקלים)",
-        rejection: "אנו מתנצלים, אך סכום המינימום לטיפול הוא 200,000 ₪. נשמח לעמוד לשירותכם בעתיד.",
-        city: "מהי עיר המגורים שלך?",
-        purpose: "מהי מטרת ההלוואה? (לדוגמה: איחוד הלוואות, שיפוץ, משכנתא)",
-        property_ownership: "האם יש בבעלותך (או בבעלות קרוב מדרגה ראשונה) נכס?",
-        property_details: "האם יש היתר בניה לנכס?",
-        risk_check: "האם היו בעיות בנקאיות ב-3 השנים האחרונות? (צ'קים שחזרו, עיקולים, הגבלות בחשבון)",
-        anything_else: "האם יש משהו נוסף שתרצה להוסיף?",
-        closing: "תודה רבה! הפרטים הועברו ליועץ בכיר מטעמנו, מתי נוח לך שהוא יתקשר אליך?",
-        generic_objection: "אנו נשמח לעזור, אך עלינו להבין את הצרכים שלך קודם.",
+        greeting: "שלום, תודה שפנית ל'אדמתנו ביתנו'. אנחנו כאן כדי לספק את הפתרונות הטובים ביותר עבורך. לפני שנתקדם – מה שלומך היום?",
+        get_name: "שמח לשמוע. כדי שנוכל לדבר בצורה אישית, איך קוראים לך?",
+        city: "נעים להכיר [Name]. באיזה יישוב אתה גר?",
+        qualification_amount: "איזה סכום אתה מעוניין לקבל?",
+        rejection_amount: "לצערנו אנו מטפלים בבקשות החל מ-200,000 ש\"ח. סליחה על אי הנוחות, ונשמח לעמוד לרשותך בעתיד.",
+        purpose: "לאיזו מטרה מיועדת ההלוואה? (לדוגמה: שיפוץ, סגירת חובות, רכב חדש וכו')",
+        property_ownership: "האם בבעלותך נכס כלשהו? (כן / לא)",
+        property_ownership_who: "על שם מי רשום הנכס? (על שמך / בן זוג / שניכם)",
+        property_location: "היכן רשום הנכס? (טאבו / מינהל / לא רשום / לא בטוח)",
+        property_permit: "האם קיים לנכס היתר בנייה? (כן / לא / לא בטוח)",
+        family_property: "האם קיים נכס בבעלות הורים או משפחה מדרגה ראשונה?",
+        rejection_no_property: "תודה, התהליך מתאים למקרים בהם קיים נכס בבעלות הלקוח או משפחתו. נשמח לעמוד לרשותך בעתיד.",
+        risk_check: "האם היו לך בעיות מול הבנקים ב-3 השנים האחרונות? (כגון חזרות צ'קים, הגבלות חשבון או עיקולים?)",
+        closing: "הפרטים שלך הועברו לנציג מטעמנו. מתי נוח לך שהוא יחזור אליך?",
         unknown: "לא הבנתי, אפשר לנסח שוב?"
     },
     ar: {
-        greeting: "مرحبا، أهلاً بكم في 'أرضنا بيتنا'. كيف حالك؟",
-        get_name: "تشرفنا! لكي نتمكن من التقدم، هل يمكنني معرفة اسمك الكامل؟",
-        listening: "أنا أفهم، نحن نساعد العائلات في حالات مماثلة كل يوم. كيف يمكننا المساعدة؟",
-        qualification_amount: "ما هو مبلغ القرض المطلوب؟ (بالشيكل)",
-        rejection: "نعتذر، ولكن الحد الأدنى للتعامل هو 200,000 شيكل. نأمل أن نخدمكم في المستقبل.",
-        city: "ما هي مدينة إقامتك؟",
-        purpose: "ما هو الغرض من القرض؟ (مثلاً: توحيد القروض، ترميم، رهن عقاري)",
-        property_ownership: "هل تملك (أو يملك قريب من الدرجة الأولى) عقاراً؟",
-        property_details: "هل يوجد رخصة بناء للعقار؟",
-        risk_check: "هل كانت هناك مشاكل بنكية في السنوات الـ 3 الماضية؟ (شيكات راجعة، حجوزات، قيود على الحساب)",
-        anything_else: "هل هناك أي شيء آخر تود إضافته؟",
-        closing: "شكراً جزيلاً! تم تحويل التفاصيل إلى مستشار كبير، متى يناسبك الاتصال بك؟",
-        generic_objection: "يسعدنا المساعدة، ولكن نحتاج إلى فهم احتياجاتك أولاً.",
-        unknown: "لم أفهم، هل يمكنك إعادة الصياغة؟"
+        greeting: "مرحبا، شكرا لتواصلك مع 'أرضنا بيتنا'. كيف حالك اليوم؟",
+        get_name: "يسعدني سماع ذلك. لنتحدث بشكل شخصي، ما هو اسمك؟",
+        city: "تشرفنا [Name]. في أي بلدة تسكن؟",
+        qualification_amount: "ما هو المبلغ الذي ترغب في الحصول عليه؟",
+        rejection_amount: "نعتذر، نتعامل مع طلبات تبدأ من 200,000 شيكل.",
+        purpose: "ما هو الغرض من القرض؟",
+        property_ownership: "هل تملك عقاراً؟ (نعم / لا)",
+        property_ownership_who: "باسم من مسجل العقار؟",
+        property_location: "أين مسجل العقار؟ (طابو / دائرة أراضي / غير مسجل)",
+        property_permit: "هل يوجد رخصة بناء؟",
+        family_property: "هل يوجد عقار بملكية الوالدين أو أقارب درجة أولى؟",
+        rejection_no_property: "شكرا، العملية تناسب من يملكون عقاراً.",
+        risk_check: "هل كانت هناك مشاكل بنكية في آخر 3 سنوات؟",
+        closing: "تم تحويل التفاصيل لمندوبنا. متى يناسبك الاتصال؟",
+        unknown: "لم أفهم، هل يمكنك الإعادة؟"
     },
     ru: {
-        greeting: "Здравствуйте, добро пожаловать в 'Адматену Бейтену'. Как вы?",
-        get_name: "Очень приятно! Чтобы мы могли продолжить, как вас зовут (полное имя)?",
-        listening: "Я понимаю, мы помогаем семьям в подобных ситуациях каждый день. Чем мы можем помочь?",
-        qualification_amount: "Какова требуемая сумма кредита? (в шекелях)",
-        rejection: "Приносим извинения, но минимальная сумма для обработки составляет 200 000 шекелей.",
-        city: "В каком городе вы живете?",
-        purpose: "Какова цель кредита? (например: консолидация долгов, ремонт, ипотека)",
-        property_ownership: "Есть ли у вас (или у родственника первой степени) недвижимость?",
-        property_details: "Есть ли разрешение на строительство?",
-        risk_check: "Были ли банковские проблемы за последние 3 года? (возвращенные чеки, аресты, ограничения счета)",
-        anything_else: "Хотите ли вы добавить что-нибудь еще?",
-        closing: "Большое спасибо! Детали переданы старшему консультанту, когда вам удобно принять звонок?",
-        generic_objection: "Мы будем рады помочь, но сначала нам нужно понять ваши потребности.",
-        unknown: "Я не понял, можете перефразировать?"
+        greeting: "Здравствуйте, спасибо за обращение. Как вы сегодня?",
+        get_name: "Рад слышать. Как вас зовут?",
+        city: "Приятно познакомиться [Name]. В каком городе вы живете?",
+        qualification_amount: "Какую сумму вы хотите получить?",
+        rejection_amount: "Извините, мы работаем с суммами от 200,000 шекелей.",
+        purpose: "Какова цель кредита?",
+        property_ownership: "Есть ли у вас недвижимость? (Да / Нет)",
+        property_ownership_who: "На чье имя записана недвижимость?",
+        property_location: "Где зарегистрирована недвижимость?",
+        property_permit: "Есть ли разрешение на строительство?",
+        family_property: "Есть ли недвижимость у родителей или близких родственников?",
+        rejection_no_property: "Спасибо, процесс подходит для владельцев недвижимости.",
+        risk_check: "Были ли банковские проблемы за последние 3 года?",
+        closing: "Детали переданы представителю. Когда вам удобно принять звонок?",
+        unknown: "Я не понял, повторите пожалуйста."
     }
 };
 
 const STEPS = {
     GREETING: 'GREETING',
     GET_NAME: 'GET_NAME',
-    LISTENING: 'LISTENING',
-    QUALIFICATION: 'QUALIFICATION',
     DATA_COLLECTION_CITY: 'DATA_COLLECTION_CITY',
+    QUALIFICATION: 'QUALIFICATION',
     DATA_COLLECTION_PURPOSE: 'DATA_COLLECTION_PURPOSE',
     PROPERTY_OWNERSHIP: 'PROPERTY_OWNERSHIP',
-    PROPERTY_DETAILS: 'PROPERTY_DETAILS',
+    PROPERTY_OWNERSHIP_WHO: 'PROPERTY_OWNERSHIP_WHO',
+    PROPERTY_LOCATION: 'PROPERTY_LOCATION',
+    PROPERTY_PERMIT: 'PROPERTY_PERMIT',
+    FAMILY_PROPERTY: 'FAMILY_PROPERTY',
+    FAMILY_PROPERTY_PERMIT: 'FAMILY_PROPERTY_PERMIT',
     RISK_CHECK: 'RISK_CHECK',
-    ANYTHING_ELSE: 'ANYTHING_ELSE',
     CLOSING: 'CLOSING'
 };
 
@@ -74,7 +80,14 @@ const STEPS = {
 const localSessions = {};
 
 const getSession = async (phoneNumber) => {
-    // 1. Try DB
+    // 1. Prefer Local Memory (Single Source of Truth for active conversation)
+    if (localSessions[phoneNumber]) {
+        // Optional: Check if local is expired? For now, assume it's fresh.
+        // console.log(`[Hybrid] Used Memory for ${phoneNumber}`);
+        return localSessions[phoneNumber];
+    }
+
+    // 2. Try DB (Only if not in memory - e.g. restart)
     if (supabase) {
         try {
             const { data, error } = await supabase
@@ -84,8 +97,10 @@ const getSession = async (phoneNumber) => {
                 .single();
 
             if (!error && data) {
-                // Sync local with DB
+                // Determine if DB is actually newer? 
+                // For simplicity, if we have NO local, we accept DB.
                 localSessions[phoneNumber] = data;
+                console.log(`[Hybrid] Loaded session for ${phoneNumber} from DB.`);
                 return data;
             }
         } catch (dbError) {
@@ -93,12 +108,6 @@ const getSession = async (phoneNumber) => {
         }
     }
 
-    // 2. Fallback to Local
-    const local = localSessions[phoneNumber];
-    if (local) {
-        console.log(`[Hybrid] Retrieved session for ${phoneNumber} from Memory.`);
-        return local;
-    }
     return null;
 };
 
