@@ -1,8 +1,9 @@
 const Groq = require('groq-sdk');
 require('dotenv').config();
 
-const MODEL = "llama-3.3-70b-versatile";
-const MAX_RETRIES = 3;
+const MODEL_MAIN = "llama-3.3-70b-versatile";
+const MODEL_FALLBACK = "llama-3.1-8b-instant";
+const MAX_RETRIES = 2;
 
 // --- PROMPTS & CONFIGURATION ---
 const SYSTEM_IDENTITY = `
@@ -89,13 +90,23 @@ const generateWithRetry = async (messages, jsonMode = false) => {
         } catch (error) {
             console.warn(`⚠️ Groq Error (Attempt ${attempt}/${MAX_RETRIES}): ${error.message}`);
 
+            // 429 = Rate Limit. If Main Model, switch to Fallback immediately.
+            if (error.status === 429) {
+                console.warn(`⚠️ Rate Limit Hit on ${currentModel}. Switching/Retrying...`);
+                // If we were using Main, force next attempt to be Fallback
+                if (currentModel === MODEL_MAIN) {
+                    attempt = MAX_RETRIES; // Skip ahead to Fallback attempt
+                    continue; // Retry immediately with fallback
+                }
+            }
+
             if (error.status === 400 || error.status === 401) {
                 console.error("Fatal API Error (400/401). Stopping retries.");
                 return null;
             }
 
-            if (attempt >= MAX_RETRIES) {
-                console.error("❌ Max Retries Reached. Giving up.");
+            if (attempt >= MAX_RETRIES + 1) {
+                console.error("❌ Max Retries Reached (Main + Fallback). Giving up.");
                 return null;
             }
 
