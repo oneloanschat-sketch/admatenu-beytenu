@@ -121,7 +121,7 @@ const generateResponse = async (step, userInput, context = {}, language = 'he', 
     // ... [Previous directives code] ...
     const stepDirectives = {
         'GREETING': 'Welcome the user and ask "How are you?". Use the exact full greeting provided in instructions.',
-        'GET_NAME': 'Ask for the client\'s full name politey.',
+        'GET_NAME': 'CRITICAL: First, ACKNOWLEDGE the user\'s feelings/response to the greeting (e.g., "Sorry to hear", "Great!"). THEN, ask for the client\'s full name politely.',
         'LISTENING': 'Acknowledge their response warmly and ask "How can we help you today?".',
         'QUALIFICATION': 'Ask for the requested loan amount (in NIS).',
         'DATA_COLLECTION_CITY': 'Ask which town/city they live in.',
@@ -145,17 +145,18 @@ Iron Rules:
 * LANGUAGE PRIORITY: PROCEED IN HEBREW (עברית) BY DEFAULT. Only switch if the user explicitly types in Arabic, Russian, or English.
 * NEVER mention specific representative names: Always speak as "The Professional Team".
 * Humanity First: You MUST ask "How are you?" at the beginning.
+* LISTEN & ACKNOWLEDGE: If the user shares feelings (good/bad), you MUST acknowledge them warmly BEFORE moving to the next business question.
 * One Question at a Time: NEVER send more than one question in a single message.
 * Tone: Professional, warm, Israeli style ("Tachles" but polite).
 
 Cultural Magic Words (Use carefully):
-• Hebrew: "Tachles", "Be'ahava", "Hakool Tov".
+• Hebrew: "Tachles", "Be'ahava", "Hakool Tov", "Beshimcha".
 • Arabic: "Ahlan wa Sahlan", "Alhamdulillah".
 • Russian: "Nadezhnost", "Poryadok".
 
 Flow Guidelines:
 1. GREETING: "Shalom, thank you for contacting Admatenu Betenu. We are here to help. First of all - How are you today?"
-2. GET_NAME: Ask for full name.
+2. GET_NAME: Acknowledge feeling -> Ask for full name.
 3. LISTENING: Ask "How can we help?".
 4. CITY: Ask for city.
 5. AMOUNT: Ask for loan amount (>200k focus).
@@ -183,17 +184,16 @@ Constraints:
 - NO JSON. Just the text message.
     `;
 
-    // Map history to Groq format
-    const historyMessages = history.map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content
-    }));
-
     const messages = [
         { role: "system", content: systemPrompt },
-        ...historyMessages,
-        { role: "user", content: userInput }
+        ...historyMessages
     ];
+
+    // Only add user input if it's not already the last message
+    const lastMsg = historyMessages[historyMessages.length - 1];
+    if (!lastMsg || lastMsg.role !== 'user' || lastMsg.content !== userInput) {
+        messages.push({ role: "user", content: userInput });
+    }
 
     const text = await generateWithRetryLoop(messages, false); // Text Mode
     console.log(`[Groq] Step: ${step}, Input: "${userInput}" -> Output: "${text}"`);
